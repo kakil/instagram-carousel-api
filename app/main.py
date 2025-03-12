@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from datetime import datetime
+import os
 from fastapi.responses import RedirectResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 
@@ -11,15 +12,16 @@ from app.api.endpoints import router as api_router
 from app.core.config import settings
 
 # Create a main FastAPI app
-main_app = FastAPI(docs_url=None)   # Disable docs on main_app
+# Get root_path from environment variable, or default to empty string for local development
+ROOT_PATH = os.getenv("ROOT_PATH", "")
+
 
 # Create your Instagram Carousel API app
 app = FastAPI(
     title="Instagram Carousel Generator API",
     description="API for generating Instagram carousel images with consistent styling",
     version="1.0.0",
-    docs_url="/docs",
-    openapi_url="/openapi.json",
+    root_path=ROOT_PATH  # Set root_path for OpenAPI documentation
 )
 
 # Configure CORS
@@ -42,60 +44,6 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.now().isoformat()
     }
-
-# Add test endpoint to mounted app
-@app.get("/test")
-async def app_test():
-    return {"message": "Mounted app is working correctly"}
-
-# Root endpoint for the mounted app
-@app.get("/")
-async def app_root():
-    return {"message": "Instagram Carousel API root"}
-
-# Include API router in the mounted app
-app.include_router(api_router, prefix="/api")
-
-# Mount the app at /instagram-carousel
-main_app.mount("/instagram-carousel", app)
-
-# Add a root path redirect for convenience on the main app
-@main_app.get("/")
-async def redirect_to_docs():
-    return RedirectResponse(url="/instagram-carousel/docs")
-
-# Add test endpoint to main app
-@main_app.get("/test")
-async def main_test():
-    return {"message": "Main app is working correctly"}
-
-# Debug endpoint on the main app
-@main_app.get("/debug")
-async def debug():
-    """Debug endpoint to help troubleshoot routing issues"""
-    return {
-        "routes": [
-            {"path": route.path, "name": route.name}
-            for route in main_app.routes
-        ]
-    }
-
-@main_app.get("/health")
-async def main_health():
-    return {
-        "status": "healthy from main app",
-        "timestamp": datetime.now().isoformat()
-    }
-
-
-@main_app.get("/instagram-carousel/docs", include_in_schema=False)
-async def custom_swagger_ui_html():
-    return get_swagger_ui_html(
-        openapi_url="/instagram-carousel/openapi.json",
-        title="Instagram Carousel Generator API",
-        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js",
-        swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui.css"
-    )
 
 
 if __name__ == "__main__":
