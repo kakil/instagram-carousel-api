@@ -83,6 +83,7 @@ async def main_health():
         "timestamp": datetime.now().isoformat()
     }
 
+
 if __name__ == "__main__":
     uvicorn.run(
         "app.main:main_app",
