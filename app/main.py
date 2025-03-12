@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from datetime import datetime
 from fastapi.responses import RedirectResponse
+from fastapi.openapi.docs import get_swagger_ui_html
+
 
 from app.api.endpoints import router as api_router
 from app.core.config import settings
@@ -17,6 +19,7 @@ app = FastAPI(
     description="API for generating Instagram carousel images with consistent styling",
     version="1.0.0",
     docs_url="/docs",
+    openapi_url="/openapi.json",
 )
 
 # Configure CORS
@@ -83,6 +86,16 @@ async def main_health():
         "status": "healthy from main app",
         "timestamp": datetime.now().isoformat()
     }
+
+
+@main_app.get("/instagram-carousel/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    return get_swagger_ui_html(
+        openapi_url="/instagram-carousel/openapi.json",
+        title="Instagram Carousel Generator API",
+        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js",
+        swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui.css"
+    )
 
 
 if __name__ == "__main__":
