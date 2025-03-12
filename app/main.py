@@ -9,13 +9,14 @@ from app.api.endpoints import router as api_router
 from app.core.config import settings
 
 # Create a main FastAPI app
-main_app = FastAPI()
+main_app = FastAPI(docs_url=None)   # Disable docs on main_app
 
 # Create your Instagram Carousel API app
 app = FastAPI(
     title="Instagram Carousel Generator API",
     description="API for generating Instagram carousel images with consistent styling",
     version="1.0.0",
+    docs_url="/docs",
 )
 
 # Configure CORS
