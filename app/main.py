@@ -76,6 +76,13 @@ async def debug():
         ]
     }
 
+@main_app.get("/health")
+async def main_health():
+    return {
+        "status": "healthy from main app",
+        "timestamp": datetime.now().isoformat()
+    }
+
 if __name__ == "__main__":
     uvicorn.run(
         "app.main:main_app",
