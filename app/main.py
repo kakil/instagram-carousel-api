@@ -45,6 +45,9 @@ async def health_check():
         "timestamp": datetime.now().isoformat()
     }
 
+# Include the API router with the /api prefix
+app.include_router(api_router, prefix=settings.API_PREFIX)
+
 
 if __name__ == "__main__":
     uvicorn.run(
