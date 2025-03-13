@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from datetime import datetime
 import os
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 import json
 
@@ -24,7 +24,8 @@ app = FastAPI(
     title="Instagram Carousel Generator API",
     description="API for generating Instagram carousel images with consistent styling",
     version="1.0.0",
-    root_path=ROOT_PATH  # Set root_path for OpenAPI documentation
+    root_path=ROOT_PATH,  # Set root_path for OpenAPI documentation
+    default_response_class=JSONResponse,
 )
 
 # Configure CORS
@@ -54,11 +55,13 @@ import sys
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 # Add middleware for logging requests
+# Add middleware to ensure UTF-8 encoding for all responses
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
-    logging.info(f"Request: {request.method} {request.url}")
+async def add_encoding_header(request: Request, call_next):
     response = await call_next(request)
-    logging.info(f"Response: {response.status_code}")
+    # Only set Content-Type for JSON responses to avoid interfering with other response types
+    if response.headers.get("Content-Type", "").startswith("application/json"):
+        response.headers["Content-Type"] = "application/json; charset=utf-8"
     return response
 
 

@@ -28,6 +28,10 @@ def create_gradient_text(
         # Default black to white gradient
         colors = [(0, 0, 0), (255, 255, 255)]
 
+    # Ensure text is a string and handle potential encoding issues
+    if not isinstance(text, str):
+        text = str(text)
+
     # Get text size
     text_bbox = draw.textbbox((0, 0), text, font=font)
     text_width = text_bbox[2] - text_bbox[0]

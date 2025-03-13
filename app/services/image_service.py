@@ -81,6 +81,19 @@ def create_slide_image(
     image = Image.new("RGB", (width, height), settings.DEFAULT_BG_COLOR)
     draw = ImageDraw.Draw(image)
 
+    # Handle potential Unicode issues - ensure all text is properly encoded
+    if title and not isinstance(title, str):
+        title = str(title)
+
+    if text and not isinstance(text, str):
+        text = str(text)
+
+    # Sanitize problematic Unicode characters
+    if text:
+        text = sanitize_text(text)
+    if title:
+        title = sanitize_text(title)
+
     # Load fonts
     try:
         title_font = ImageFont.truetype(settings.DEFAULT_FONT_BOLD, 60)
@@ -138,7 +151,6 @@ def create_slide_image(
         text_height = text_bbox[3] - text_bbox[1]
         x_position = width / 2 - text_width / 2
 
-        line = str(line)
         draw.text((x_position, y_position), line, fill="white", font=text_font)
         y_position += 60
 
@@ -180,3 +192,41 @@ def create_slide_image(
             logger.error(f"Error adding logo: {str(e)}")
 
     return image
+
+
+def sanitize_text(text: str) -> str:
+    """
+    Sanitize text by replacing problematic Unicode characters with ASCII equivalents
+
+    Args:
+        text: The text to sanitize
+
+    Returns:
+        Sanitized text
+    """
+    if not text:
+        return text
+
+    # Map of common Unicode characters to ASCII equivalents
+    char_map = {
+        '\u2018': "'",  # Left single quote
+        '\u2019': "'",  # Right single quote
+        '\u201C': '"',  # Left double quote
+        '\u201D': '"',  # Right double quote
+        '\u2013': '-',  # En dash
+        '\u2014': '-',  # Em dash
+        '\u2022': '*',  # Bullet
+        '\u2026': '...',  # Ellipsis
+        '\u2192': '->',  # Right arrow
+        '\u2190': '<-',  # Left arrow
+        '\u2194': '<->',  # Left-right arrow
+        '\u00A9': '(c)',  # Copyright
+        '\u00AE': '(R)',  # Registered trademark
+        '\u2122': '(TM)',  # Trademark
+    }
+
+    # Replace each problematic character
+    for char, replacement in char_map.items():
+        text = text.replace(char, replacement)
+
+    return text
