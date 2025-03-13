@@ -138,6 +138,7 @@ def create_slide_image(
         text_height = text_bbox[3] - text_bbox[1]
         x_position = width / 2 - text_width / 2
 
+        line = str(line)
         draw.text((x_position, y_position), line, fill="white", font=text_font)
         y_position += 60
 
