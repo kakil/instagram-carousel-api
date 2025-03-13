@@ -6,13 +6,16 @@ from datetime import datetime
 import os
 from fastapi.responses import RedirectResponse
 from fastapi.openapi.docs import get_swagger_ui_html
+import json
 
+from starlette.responses import JSONResponse
 
 from app.api.endpoints import router as api_router
 from app.core.config import settings
 
 # Create a main FastAPI app
-# Get root_path from environment variable, or default to empty string for local development
+# Get root_path from environment variable, or default to empty string
+# for local development
 ROOT_PATH = os.getenv("ROOT_PATH", "")
 
 
@@ -44,6 +47,35 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.now().isoformat()
     }
+
+# Add logging
+import logging
+import sys
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
+# Add middleware for logging requests
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logging.info(f"Request: {request.method} {request.url}")
+    response = await call_next(request)
+    logging.info(f"Response: {response.status_code}")
+    return response
+
+
+# Custom JSON encoder to handle non-ASCII characters
+class CustomJSONResponse(JSONResponse):
+    def render(self, content: any) -> bytes:
+        return json.dumps(
+            content,
+            ensure_ascii=False,
+            allow_nan=False,
+            indent=None,
+            separators=(",", ":"),
+        ).encode("utf-8")
+
+
+# Use CustomJSONResponse for all responses by default
+app.default_response_class = CustomJSONResponse
 
 # Include the API router with the /api prefix
 app.include_router(api_router, prefix=settings.API_PREFIX)
