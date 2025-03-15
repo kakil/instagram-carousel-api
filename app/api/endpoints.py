@@ -1,5 +1,7 @@
-from fastapi import APIRouter, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Request, BackgroundTasks, Depends
+from fastapi.responses import FileResponse
 import uuid
+import os
 import logging
 import time
 from typing import Dict, Any, List
@@ -9,6 +11,7 @@ import traceback
 # Import your improved image service
 from app.services.improved_image_service import create_carousel_images, \
     ImageGenerationError
+from app.services import storage_service
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -67,6 +70,15 @@ class CarouselResponse(BaseModel):
                                    description="Processing time in seconds")
     warnings: List[str] = Field([],
                                 description="Any warnings during processing")
+
+
+# Add the following new models after your existing models
+class CarouselResponseWithUrls(CarouselResponse):
+    """Response model for carousel generation with public URLs"""
+    public_urls: List[str] = Field([],
+                                   description="Publicly accessible URLs for the slide images")
+
+
 
 
 # Create a router for the carousel endpoints
@@ -162,3 +174,76 @@ async def generate_carousel(request: CarouselRequest,
 
         raise HTTPException(status_code=500,
                             detail=f"Error generating carousel: {error_message}")
+
+
+@router.post("/generate-carousel-with-urls",
+             response_model=CarouselResponseWithUrls, tags=["carousel"])
+async def generate_carousel_with_urls(
+        request: CarouselRequest,
+        background_tasks: BackgroundTasks,
+        req: Request
+):
+    """Generate carousel images and return URLs for temporary access"""
+    try:
+        # Create a unique ID for this carousel
+        carousel_id = str(uuid.uuid4())[:8]
+        logger.info(
+            f"Starting carousel generation with URLs for ID: {carousel_id}")
+
+        # Generate carousel images using your existing service
+        result = create_carousel_images(
+            request.carousel_title,
+            request.slides,
+            carousel_id,
+            request.include_logo,
+            request.logo_path
+        )
+
+        # Determine base URL for public access
+        base_url = str(req.base_url).rstrip('/')
+
+        # Save images and get public URLs
+        public_urls = storage_service.save_carousel_images(
+            carousel_id,
+            result,
+            base_url
+        )
+
+        # Schedule cleanup of these files after 24 hours
+        storage_service.schedule_cleanup(
+            background_tasks,
+            os.path.join(storage_service.TEMP_DIR, carousel_id),
+            hours=24
+        )
+
+        return {
+            "status": "success",
+            "carousel_id": carousel_id,
+            "slides": result,
+            "public_urls": public_urls
+        }
+
+    except Exception as e:
+        logger.error(f"Error generating carousel with URLs: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating carousel: {str(e)}"
+        )
+
+
+@router.get("/temp/{carousel_id}/{filename}", tags=["files"])
+async def get_temp_file(carousel_id: str, filename: str):
+    """Serve a temporary file with proper content type"""
+    file_path = storage_service.get_file_path(carousel_id, filename)
+
+    if not file_path:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Determine content type
+    content_type = storage_service.get_content_type(filename)
+
+    return FileResponse(
+        path=file_path,
+        media_type=content_type,
+        filename=filename
+    )

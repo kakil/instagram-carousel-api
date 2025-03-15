@@ -12,11 +12,26 @@ from starlette.responses import JSONResponse
 
 from app.api.endpoints import router as api_router
 from app.core.config import settings
+from app.services import storage_service
+from contextlib import asynccontextmanager
 
 # Create a main FastAPI app
 # Get root_path from environment variable, or default to empty string
 # for local development
 ROOT_PATH = os.getenv("ROOT_PATH", "")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    storage_service.cleanup_old_files()
+    # ... any other startup logic you might have
+
+    yield  # This is where the app runs
+
+    # Shutdown logic
+    # ... any shutdown logic you might have
+    pass
 
 
 # Create your Instagram Carousel API app
@@ -26,6 +41,7 @@ app = FastAPI(
     version="1.0.0",
     root_path=ROOT_PATH,  # Set root_path for OpenAPI documentation
     default_response_class=JSONResponse,
+    lifespan=lifespan,
 )
 
 # Configure CORS
@@ -39,6 +55,8 @@ app.add_middleware(
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/temp", StaticFiles(directory=storage_service.TEMP_DIR), name="temp")
+
 
 # Add health check endpoint to the mounted app
 @app.get("/health", tags=["health"])
