@@ -190,13 +190,15 @@ async def generate_carousel_with_urls(
         logger.info(
             f"Starting carousel generation with URLs for ID: {carousel_id}")
 
-        # Generate carousel images using your existing service
+        # Generate carousel images
         result = create_carousel_images(
             request.carousel_title,
-            request.slides,
+            [{"text": slide.text} for slide in request.slides],
             carousel_id,
-            request.include_logo,
-            request.logo_path
+            {
+                'include_logo': request.include_logo,
+                'logo_path': request.logo_path
+            }
         )
 
         # Determine base URL for public access
