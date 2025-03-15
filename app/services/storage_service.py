@@ -50,7 +50,7 @@ def save_carousel_images(
                 f.write(binary_content)
 
             # Generate public URL
-            public_url = f"{base_url}/instagram-carousel/api/temp/{carousel_id}/{image['filename']}"
+            public_url = f"{base_url.rstrip('/')}/api/temp/{carousel_id}/{image['filename']}"
             public_urls.append(public_url)
 
         except Exception as e:

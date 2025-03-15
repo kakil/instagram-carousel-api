@@ -232,3 +232,69 @@ async def generate_carousel_with_urls(
             detail=f"Error generating carousel: {str(e)}"
         )
 
+
+@router.get("/temp/{carousel_id}/{filename}", tags=["files"])
+async def get_temp_file(carousel_id: str, filename: str):
+    """Serve a temporary file with proper content type"""
+    # Use Path for better path handling
+    from pathlib import Path
+
+    # Log request info
+    logger.info(f"File request: carousel_id={carousel_id}, filename={filename}")
+
+    # Construct the file path
+    file_path = Path(storage_service.TEMP_DIR) / carousel_id / filename
+
+    # Log file path details
+    logger.info(f"File path: {file_path}")
+    logger.info(f"File exists: {file_path.exists()}")
+    logger.info(f"TEMP_DIR: {storage_service.TEMP_DIR}")
+
+    # Log for debugging
+    logger.info(f"Requested file: {file_path}, exists: {file_path.exists()}")
+
+    if not file_path.exists() or not file_path.is_file():
+        logger.error(f"File not found: {file_path}")
+        if file_path.parent.exists():
+            logger.info(
+                f"Parent directory contents: {list(file_path.parent.iterdir())}")
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Determine content type
+    content_type = storage_service.get_content_type(filename)
+    logger.info(f"Serving file with content type: {content_type}")
+
+    return FileResponse(
+        path=str(file_path),
+        media_type=content_type,
+        filename=filename
+    )
+
+
+# Add this to endpoints.py
+@router.get("/debug-temp", tags=["debug"])
+async def debug_temp():
+    """Debug endpoint to check temp directory contents"""
+    temp_dir = storage_service.TEMP_DIR
+    contents = {}
+
+    # List all carousel directories
+    try:
+        for carousel_id in os.listdir(temp_dir):
+            carousel_path = os.path.join(temp_dir, carousel_id)
+            if os.path.isdir(carousel_path):
+                contents[carousel_id] = os.listdir(carousel_path)
+
+        return {
+            "temp_dir": temp_dir,
+            "contents": contents,
+            "abs_path": os.path.abspath(temp_dir),
+            "exists": os.path.exists(temp_dir),
+            "is_dir": os.path.isdir(temp_dir)
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "temp_dir": temp_dir,
+            "abs_path": os.path.abspath(temp_dir)
+        }
