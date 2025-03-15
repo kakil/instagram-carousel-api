@@ -9,8 +9,10 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Configure temporary file storage
-TEMP_DIR = "static/temp"
+# Get the absolute path to the directory containing the current file
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Define TEMP_DIR as an absolute path
+TEMP_DIR = os.path.join(BASE_DIR, "static", "temp")
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 
