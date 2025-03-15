@@ -15,11 +15,6 @@ from app.core.config import settings
 from app.services import storage_service
 from contextlib import asynccontextmanager
 
-# Create a main FastAPI app
-# Get root_path from environment variable, or default to empty string
-# for local development
-ROOT_PATH = os.getenv("ROOT_PATH", "")
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,6 +27,12 @@ async def lifespan(app: FastAPI):
     # Shutdown logic
     # ... any shutdown logic you might have
     pass
+
+
+# Create a main FastAPI app
+# Get root_path from environment variable, or default to empty string
+# for local development
+ROOT_PATH = os.getenv("ROOT_PATH", "")
 
 
 # Create your Instagram Carousel API app
