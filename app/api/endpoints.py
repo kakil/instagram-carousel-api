@@ -232,20 +232,3 @@ async def generate_carousel_with_urls(
             detail=f"Error generating carousel: {str(e)}"
         )
 
-
-@router.get("/temp/{carousel_id}/{filename}", tags=["files"])
-async def get_temp_file(carousel_id: str, filename: str):
-    """Serve a temporary file with proper content type"""
-    file_path = storage_service.get_file_path(carousel_id, filename)
-
-    if not file_path:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Determine content type
-    content_type = storage_service.get_content_type(filename)
-
-    return FileResponse(
-        path=file_path,
-        media_type=content_type,
-        filename=filename
-    )

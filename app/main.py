@@ -56,7 +56,7 @@ app.add_middleware(
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/temp", StaticFiles(directory=storage_service.TEMP_DIR), name="temp")
+app.mount(f"{settings.API_PREFIX}/temp", StaticFiles(directory=storage_service.TEMP_DIR), name="temp")
 
 
 # Add health check endpoint to the mounted app
