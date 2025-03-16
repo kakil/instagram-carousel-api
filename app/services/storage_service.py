@@ -32,34 +32,42 @@ def save_carousel_images(
     Returns:
         List of public URLs for the saved images
     """
-    # Create directory for this carousel
-    carousel_dir = os.path.join(TEMP_DIR, carousel_id)
-    os.makedirs(carousel_dir, exist_ok=True)
+    try:
 
-    # Save images and generate URLs
-    public_urls = []
+        # Create directory for this carousel
+        carousel_dir = os.path.join(TEMP_DIR, carousel_id)
+        logger.info(f"Creating directory at: {carousel_dir}")
+        os.makedirs(carousel_dir, exist_ok=True)
 
-    for image in images_data:
-        try:
-            # Decode hex content to binary
-            binary_content = bytes.fromhex(image['content'])
+        # Save images and generate URLs
+        public_urls = []
 
-            # Save to file
-            file_path = os.path.join(carousel_dir, image['filename'])
-            with open(file_path, 'wb') as f:
-                f.write(binary_content)
+        for image in images_data:
+            try:
+                # Decode hex content to binary
+                binary_content = bytes.fromhex(image['content'])
 
-            # Generate public URL
-            public_url = f"{base_url.rstrip('/')}/api/temp/{carousel_id}/{image['filename']}"
-            public_urls.append(public_url)
+                # Save to file
+                file_path = os.path.join(carousel_dir, image['filename'])
+                with open(file_path, 'wb') as f:
+                    f.write(binary_content)
 
-        except Exception as e:
-            logger.error(
-                f"Error saving image {image.get('filename', 'unknown')}: {str(e)}")
-            # Continue with other images
+                # Generate public URL
+                public_url = f"{base_url.rstrip('/')}/api/temp/{carousel_id}/{image['filename']}"
+                public_urls.append(public_url)
 
-    logger.info(f"Saved {len(public_urls)} images for carousel {carousel_id}")
-    return public_urls
+            except Exception as e:
+                logger.error(
+                    f"Error saving image {image.get('filename', 'unknown')}: {str(e)}")
+                # Continue with other images
+
+        logger.info(f"Saved {len(public_urls)} images for carousel {carousel_id}")
+        return public_urls
+
+    except Exception as e:
+        logger.error(f"Error in save_carousel_images: {str(e)}")
+        # Re-raise to ensure the error is properly reported
+        raise
 
 
 def schedule_cleanup(background_tasks: BackgroundTasks, directory_path: str,
