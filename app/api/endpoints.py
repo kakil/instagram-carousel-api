@@ -8,10 +8,10 @@ from typing import Dict, Any, List
 from pydantic import BaseModel, Field
 import traceback
 
-# Import your improved image service
-from app.services.improved_image_service import create_carousel_images, \
-    ImageGenerationError
+# Import the new image service module
+from app.services.image_service import get_image_service, ImageServiceType
 from app.services import storage_service
+from app.core.config import settings
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -79,8 +79,6 @@ class CarouselResponseWithUrls(CarouselResponse):
                                    description="Publicly accessible URLs for the slide images")
 
 
-
-
 # Create a router for the carousel endpoints
 router = APIRouter()
 
@@ -102,10 +100,31 @@ def cleanup_temp_files(carousel_id: str):
     logger.info(f"Cleaning up temporary files for carousel {carousel_id}")
 
 
+# Create a dependency to provide the image service
+def get_enhanced_image_service():
+    """
+    Dependency that provides the enhanced image service.
+    This allows for easy testing and mocking.
+    """
+    service_settings = {
+        'width': settings.DEFAULT_WIDTH,
+        'height': settings.DEFAULT_HEIGHT,
+        'bg_color': settings.DEFAULT_BG_COLOR,
+        'title_font': settings.DEFAULT_FONT_BOLD,
+        'text_font': settings.DEFAULT_FONT,
+        'nav_font': settings.DEFAULT_FONT
+    }
+    return get_image_service(ImageServiceType.ENHANCED.value, service_settings)
+
+
 @router.post("/generate-carousel", response_model=CarouselResponse,
              tags=["carousel"])
-async def generate_carousel(request: CarouselRequest,
-                            background_tasks: BackgroundTasks, req: Request):
+async def generate_carousel(
+    request: CarouselRequest,
+    background_tasks: BackgroundTasks,
+    req: Request,
+    image_service = Depends(get_enhanced_image_service)
+):
     """Generate carousel images from provided text content"""
     start_time = await log_request_info(req)
     warnings = []
@@ -133,12 +152,11 @@ async def generate_carousel(request: CarouselRequest,
             'nav_font': 'Arial.ttf'
         }
 
-        # Generate carousel images
-        result = create_carousel_images(
+        # Generate carousel images using the image service
+        result = image_service.create_carousel_images(
             request.carousel_title,
             [{"text": slide.text} for slide in request.slides],
             carousel_id,
-            settings,
             request.include_logo,
             request.logo_path
         )
@@ -158,11 +176,6 @@ async def generate_carousel(request: CarouselRequest,
             "warnings": warnings
         }
 
-    except ImageGenerationError as e:
-        # Handle specific image generation errors
-        logger.error(f"Image generation error: {str(e)}")
-        raise HTTPException(status_code=422,
-                            detail=f"Error generating carousel images: {str(e)}")
     except Exception as e:
         # Handle general errors
         logger.error(f"Unexpected error: {str(e)}")
@@ -177,11 +190,13 @@ async def generate_carousel(request: CarouselRequest,
 
 
 @router.post("/generate-carousel-with-urls",
-             response_model=CarouselResponseWithUrls, tags=["carousel"])
+             response_model=CarouselResponseWithUrls,
+             tags=["carousel"])
 async def generate_carousel_with_urls(
-        request: CarouselRequest,
-        background_tasks: BackgroundTasks,
-        req: Request
+    request: CarouselRequest,
+    background_tasks: BackgroundTasks,
+    req: Request,
+    image_service = Depends(get_enhanced_image_service)
 ):
     """Generate carousel images and return URLs for temporary access"""
     try:
@@ -191,14 +206,12 @@ async def generate_carousel_with_urls(
             f"Starting carousel generation with URLs for ID: {carousel_id}")
 
         # Generate carousel images
-        result = create_carousel_images(
+        result = image_service.create_carousel_images(
             request.carousel_title,
             [{"text": slide.text} for slide in request.slides],
             carousel_id,
-            {
-                'include_logo': request.include_logo,
-                'logo_path': request.logo_path
-            }
+            request.include_logo,
+            request.logo_path
         )
 
         # Determine base URL for public access
@@ -271,7 +284,6 @@ async def get_temp_file(carousel_id: str, filename: str):
     )
 
 
-# Add this to endpoints.py
 @router.get("/debug-temp", tags=["debug"])
 async def debug_temp():
     """Debug endpoint to check temp directory contents"""

@@ -9,11 +9,48 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Get the absolute path to the directory containing the current file
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Define TEMP_DIR as an absolute path
-TEMP_DIR = "/var/www/api.kitwanaakil.com/public_html/instagram-carousel-api/static/temp"
-os.makedirs(TEMP_DIR, exist_ok=True)
+
+# Get environment variables for configurable paths
+def get_temp_dir():
+    """
+    Get the temporary directory path from environment variables or configuration.
+    Falls back to a local directory for development environments.
+    """
+    # First, check for environment variable
+    env_temp_dir = os.getenv("CAROUSEL_TEMP_DIR")
+    if env_temp_dir:
+        return env_temp_dir
+
+    # If we're in production (check for some indicator in env)
+    if os.getenv("PRODUCTION", "").lower() == "true":
+        # Use the production path
+        return "/var/www/api.kitwanaakil.com/public_html/instagram-carousel-api/static/temp"
+
+    # For development environment, use a local directory
+    # Get the absolute path to the directory containing this file
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(BASE_DIR, "static", "temp")
+
+
+# Define TEMP_DIR using the function
+TEMP_DIR = get_temp_dir()
+
+# Ensure the directory exists
+try:
+    os.makedirs(TEMP_DIR, exist_ok=True)
+    logger.info(f"Temporary directory set to: {TEMP_DIR}")
+except PermissionError as e:
+    # Fall back to a directory we have permission to write to
+    logger.warning(f"Permission denied for {TEMP_DIR}: {e}")
+    TEMP_DIR = os.path.join(os.path.expanduser("~"), ".carousel-temp")
+    logger.info(f"Falling back to user home directory: {TEMP_DIR}")
+    os.makedirs(TEMP_DIR, exist_ok=True)
+except Exception as e:
+    # Last resort fallback to system temp directory
+    logger.error(f"Error creating temp directory: {e}")
+    TEMP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
+    logger.info(f"Falling back to local directory: {TEMP_DIR}")
+    os.makedirs(TEMP_DIR, exist_ok=True)
 
 
 def save_carousel_images(
@@ -32,42 +69,34 @@ def save_carousel_images(
     Returns:
         List of public URLs for the saved images
     """
-    try:
+    # Create directory for this carousel
+    carousel_dir = os.path.join(TEMP_DIR, carousel_id)
+    os.makedirs(carousel_dir, exist_ok=True)
 
-        # Create directory for this carousel
-        carousel_dir = os.path.join(TEMP_DIR, carousel_id)
-        logger.info(f"Creating directory at: {carousel_dir}")
-        os.makedirs(carousel_dir, exist_ok=True)
+    # Save images and generate URLs
+    public_urls = []
 
-        # Save images and generate URLs
-        public_urls = []
+    for image in images_data:
+        try:
+            # Decode hex content to binary
+            binary_content = bytes.fromhex(image['content'])
 
-        for image in images_data:
-            try:
-                # Decode hex content to binary
-                binary_content = bytes.fromhex(image['content'])
+            # Save to file
+            file_path = os.path.join(carousel_dir, image['filename'])
+            with open(file_path, 'wb') as f:
+                f.write(binary_content)
 
-                # Save to file
-                file_path = os.path.join(carousel_dir, image['filename'])
-                with open(file_path, 'wb') as f:
-                    f.write(binary_content)
+            # Generate public URL
+            public_url = f"{base_url.rstrip('/')}/api/temp/{carousel_id}/{image['filename']}"
+            public_urls.append(public_url)
 
-                # Generate public URL
-                public_url = f"{base_url.rstrip('/')}/api/temp/{carousel_id}/{image['filename']}"
-                public_urls.append(public_url)
+        except Exception as e:
+            logger.error(
+                f"Error saving image {image.get('filename', 'unknown')}: {str(e)}")
+            # Continue with other images
 
-            except Exception as e:
-                logger.error(
-                    f"Error saving image {image.get('filename', 'unknown')}: {str(e)}")
-                # Continue with other images
-
-        logger.info(f"Saved {len(public_urls)} images for carousel {carousel_id}")
-        return public_urls
-
-    except Exception as e:
-        logger.error(f"Error in save_carousel_images: {str(e)}")
-        # Re-raise to ensure the error is properly reported
-        raise
+    logger.info(f"Saved {len(public_urls)} images for carousel {carousel_id}")
+    return public_urls
 
 
 def schedule_cleanup(background_tasks: BackgroundTasks, directory_path: str,
