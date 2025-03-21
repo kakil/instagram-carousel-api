@@ -1,0 +1,15 @@
+include LICENSE
+include README.md
+include requirements.txt
+include requirements-dev.txt
+include .env.example
+include pyproject.toml
+
+recursive-include instagram_carousel_generator/static/assets *
+recursive-exclude instagram_carousel_generator/static/temp *
+
+recursive-include tests *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * .*.swp
+recursive-exclude * .DS_Store

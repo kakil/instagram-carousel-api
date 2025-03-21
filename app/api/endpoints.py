@@ -225,9 +225,10 @@ async def generate_carousel_with_urls(
         )
 
         # Schedule cleanup of these files after 24 hours
+        # Update: Use temp_dir instead of TEMP_DIR
         storage_service.schedule_cleanup(
             background_tasks,
-            os.path.join(storage_service.TEMP_DIR, carousel_id),
+            os.path.join(storage_service.temp_dir, carousel_id),
             hours=24
         )
 
@@ -256,12 +257,13 @@ async def get_temp_file(carousel_id: str, filename: str):
     logger.info(f"File request: carousel_id={carousel_id}, filename={filename}")
 
     # Construct the file path
-    file_path = Path(storage_service.TEMP_DIR) / carousel_id / filename
+    # Update: Use temp_dir instead of TEMP_DIR
+    file_path = Path(storage_service.temp_dir) / carousel_id / filename
 
     # Log file path details
     logger.info(f"File path: {file_path}")
     logger.info(f"File exists: {file_path.exists()}")
-    logger.info(f"TEMP_DIR: {storage_service.TEMP_DIR}")
+    logger.info(f"temp_dir: {storage_service.temp_dir}")
 
     # Log for debugging
     logger.info(f"Requested file: {file_path}, exists: {file_path.exists()}")
@@ -287,7 +289,8 @@ async def get_temp_file(carousel_id: str, filename: str):
 @router.get("/debug-temp", tags=["debug"])
 async def debug_temp():
     """Debug endpoint to check temp directory contents"""
-    temp_dir = storage_service.TEMP_DIR
+    # Update: Use temp_dir instead of TEMP_DIR
+    temp_dir = storage_service.temp_dir
     contents = {}
 
     # List all carousel directories

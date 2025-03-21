@@ -4,13 +4,27 @@ from io import BytesIO
 import os
 import tempfile
 
-# Import the new image service
+# Import the image service components
 from app.services.image_service import get_image_service, ImageServiceType
 
 
 @pytest.fixture
-def image_service():
-    """Fixture to provide an image service for tests"""
+def standard_image_service():
+    """Fixture to provide a standard image service for tests"""
+    settings = {
+        'width': 500,  # Smaller size for faster tests
+        'height': 500,
+        'bg_color': (18, 18, 18),
+        'title_font': 'Arial.ttf',
+        'text_font': 'Arial.ttf',
+        'nav_font': 'Arial.ttf'
+    }
+    return get_image_service(ImageServiceType.STANDARD.value, settings)
+
+
+@pytest.fixture
+def enhanced_image_service():
+    """Fixture to provide an enhanced image service for tests"""
     settings = {
         'width': 500,  # Smaller size for faster tests
         'height': 500,
@@ -22,10 +36,10 @@ def image_service():
     return get_image_service(ImageServiceType.ENHANCED.value, settings)
 
 
-def test_create_slide_image(image_service):
+def test_create_slide_image(enhanced_image_service):
     """Test the slide image creation functionality"""
     # Create a test image
-    img = image_service.create_slide_image(
+    img = enhanced_image_service.create_slide_image(
         "Test Title",
         "This is test slide content",
         1,
@@ -52,7 +66,7 @@ def test_create_slide_image(image_service):
     assert validate_img is not None
 
 
-def test_create_carousel_images(image_service):
+def test_create_carousel_images(enhanced_image_service):
     """Test the carousel images creation functionality"""
     with tempfile.TemporaryDirectory() as temp_dir:
         # Set up test data
@@ -64,7 +78,7 @@ def test_create_carousel_images(image_service):
         carousel_id = "test123"
 
         # Create carousel images
-        result = image_service.create_carousel_images(
+        result = enhanced_image_service.create_carousel_images(
             carousel_title,
             slides_data,
             carousel_id
@@ -78,10 +92,11 @@ def test_create_carousel_images(image_service):
         assert result[1]["filename"] == "slide_2.png"
 
 
-def test_error_slide(image_service):
+def test_error_slide(enhanced_image_service):
     """Test the error slide creation"""
     # Create an error slide
-    error_slide = image_service.create_error_slide(1, 3, "Test error message")
+    error_slide = enhanced_image_service.create_error_slide(1, 3,
+                                                            "Test error message")
 
     # Verify it's a valid image
     assert error_slide is not None
@@ -92,18 +107,92 @@ def test_error_slide(image_service):
     assert error_slide.height == 500
 
 
-def test_sanitize_text(image_service):
+def test_sanitize_text(enhanced_image_service):
     """Test text sanitization functionality"""
     # Test with various special characters
     special_text = "Test with special characters: → ← " " ' ' — – …"
-    sanitized = image_service.sanitize_text(special_text)
+    sanitized = enhanced_image_service.sanitize_text(special_text)
 
     # Verify basic sanitization
     assert "→" not in sanitized
     assert "->" in sanitized  # Check for replacement
 
     # Test with None input
-    assert image_service.sanitize_text(None) == ""
+    assert enhanced_image_service.sanitize_text(None) == ""
 
     # Test with non-string input
-    assert isinstance(image_service.sanitize_text(123), str)
+    assert isinstance(enhanced_image_service.sanitize_text(123), str)
+
+
+def test_compare_service_implementations(standard_image_service,
+                                         enhanced_image_service):
+    """Test that both service implementations produce valid images"""
+    # Test parameters
+    title = "Test Title"
+    text = "This is test content"
+    slide_number = 1
+    total_slides = 3
+
+    # Create images with both services
+    standard_img = standard_image_service.create_slide_image(
+        title, text, slide_number, total_slides, False, None
+    )
+
+    enhanced_img = enhanced_image_service.create_slide_image(
+        title, text, slide_number, total_slides, False, None
+    )
+
+    # Verify both are valid images
+    assert isinstance(standard_img, Image.Image)
+    assert isinstance(enhanced_img, Image.Image)
+
+    # They should have the same dimensions as specified in the fixtures
+    assert standard_img.width == enhanced_img.width == 500
+    assert standard_img.height == enhanced_img.height == 500
+
+
+def test_unicode_text_handling(enhanced_image_service):
+    """Test handling of complex Unicode text"""
+    # Text with various Unicode characters
+    unicode_text = "Unicode test: 你好 Привет こんにちは 안녕하세요 αβγ ✓✗✘"
+
+    # Create an image with Unicode text
+    img = enhanced_image_service.create_slide_image(
+        "Unicode Test",
+        unicode_text,
+        1,
+        1,
+        False,
+        None
+    )
+
+    # Verify image was created
+    assert img is not None
+    assert isinstance(img, Image.Image)
+
+    # Save and verify it's a valid image
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    validate_img = Image.open(buffer)
+    assert validate_img is not None
+
+
+def test_error_handling_with_problematic_text(enhanced_image_service):
+    """Test error handling with potentially problematic text"""
+    # Create a very long text that might cause issues
+    very_long_text = "This is an extremely long text " * 100
+
+    # The service should handle this gracefully
+    img = enhanced_image_service.create_slide_image(
+        "Long Text Test",
+        very_long_text,
+        1,
+        1,
+        False,
+        None
+    )
+
+    # Verify image was created despite the challenging input
+    assert img is not None
+    assert isinstance(img, Image.Image)

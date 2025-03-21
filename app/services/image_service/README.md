@@ -31,49 +31,63 @@ BaseImageService (Abstract Base Class)
 ### Basic Usage
 
 ```python
-from app.services.image_service import create_carousel_images
-```
-
-### Step 2: Switch to Object-Oriented Approach (Optional)
-
-If you want to take advantage of the new class-based approach:
-
-```python
 from app.services.image_service import get_image_service, ImageServiceType
 
+# Create an enhanced image service
 service = get_image_service(ImageServiceType.ENHANCED.value, {
     'width': 1080,
-    'height': 1080
+    'height': 1080,
+    'bg_color': (18, 18, 18)
 })
 
+# Generate carousel images
 images = service.create_carousel_images(
+    carousel_title="My Carousel",
+    slides_data=[{"text": "Slide 1"}, {"text": "Slide 2"}],
+    carousel_id="abc123",
+    include_logo=True,
+    logo_path="/path/to/logo.png"
+)
+```
+
+### Using with FastAPI Dependency Injection
+
+```python
+from fastapi import Depends
+from app.services.image_service import get_image_service, ImageServiceType
+
+def get_enhanced_image_service():
+    return get_image_service(ImageServiceType.ENHANCED.value, settings)
+
+@router.post("/generate-carousel")
+async def generate_carousel(
+    request: CarouselRequest,
+    image_service = Depends(get_enhanced_image_service)
+):
+    result = image_service.create_carousel_images(
+        request.carousel_title,
+        [{"text": slide.text} for slide in request.slides],
+        carousel_id,
+        request.include_logo,
+        request.logo_path
+    )
+    
+    return {"status": "success", "carousel_id": carousel_id, "slides": result}
+```
+
+### Legacy Support
+
+For backward compatibility, you can still use the module's functions directly:
+
+```python
+from app.services.image_service import create_carousel_images, create_slide_image
+
+# These functions use the default EnhancedImageService under the hood
+images = create_carousel_images(
     carousel_title="My Carousel",
     slides_data=[{"text": "Slide 1"}, {"text": "Slide 2"}],
     carousel_id="abc123"
 )
-```
-
-### Step 3: Add FastAPI Dependency for Testing (Optional)
-
-For easier testing and mocking, use FastAPI's dependency injection:
-
-```python
-# Define a dependency
-def get_image_service_dependency():
-    service_settings = {
-        'width': settings.DEFAULT_WIDTH,
-        'height': settings.DEFAULT_HEIGHT,
-        'bg_color': settings.DEFAULT_BG_COLOR
-    }
-    return get_image_service(ImageServiceType.ENHANCED.value, service_settings)
-
-# Use in endpoint
-@router.post("/generate-carousel")
-async def generate_carousel(
-    request: CarouselRequest,
-    image_service = Depends(get_image_service_dependency)
-):
-    # Use image_service
 ```
 
 ## Configuration Options
@@ -153,63 +167,6 @@ def test_gradient_text(standard_service):
     
 def test_error_slide(enhanced_service):
     # Test error slide creation
-```service import get_image_service, ImageServiceType
-
-# Create an enhanced image service
-service = get_image_service(ImageServiceType.ENHANCED.value, {
-    'width': 1080,
-    'height': 1080,
-    'bg_color': (18, 18, 18)
-})
-
-# Generate carousel images
-images = service.create_carousel_images(
-    carousel_title="My Carousel",
-    slides_data=[{"text": "Slide 1"}, {"text": "Slide 2"}],
-    carousel_id="abc123",
-    include_logo=True,
-    logo_path="/path/to/logo.png"
-)
-```
-
-### Using with FastAPI Dependency Injection
-
-```python
-from fastapi import Depends
-from app.services.image_service import get_image_service, ImageServiceType
-
-def get_enhanced_image_service():
-    return get_image_service(ImageServiceType.ENHANCED.value, settings)
-
-@router.post("/generate-carousel")
-async def generate_carousel(
-    request: CarouselRequest,
-    image_service = Depends(get_enhanced_image_service)
-):
-    result = image_service.create_carousel_images(
-        request.carousel_title,
-        [{"text": slide.text} for slide in request.slides],
-        carousel_id,
-        request.include_logo,
-        request.logo_path
-    )
-    
-    return {"status": "success", "carousel_id": carousel_id, "slides": result}
-```
-
-### Legacy Support
-
-For backward compatibility, you can still use the module's functions directly:
-
-```python
-from app.services.image_service import create_carousel_images, create_slide_image
-
-# These functions use the default EnhancedImageService under the hood
-images = create_carousel_images(
-    carousel_title="My Carousel",
-    slides_data=[{"text": "Slide 1"}, {"text": "Slide 2"}],
-    carousel_id="abc123"
-)
 ```
 
 ## Migration Guide
@@ -223,4 +180,47 @@ from app.services.improved_image_service import create_carousel_images
 
 With:
 ```python
-from app.services.image_
+from app.services.image_service import create_carousel_images
+```
+
+### Step 2: Switch to Object-Oriented Approach (Optional)
+
+If you want to take advantage of the new class-based approach:
+
+```python
+from app.services.image_service import get_image_service, ImageServiceType
+
+service = get_image_service(ImageServiceType.ENHANCED.value, {
+    'width': 1080,
+    'height': 1080
+})
+
+images = service.create_carousel_images(
+    carousel_title="My Carousel",
+    slides_data=[{"text": "Slide 1"}, {"text": "Slide 2"}],
+    carousel_id="abc123"
+)
+```
+
+### Step 3: Add FastAPI Dependency for Testing (Optional)
+
+For easier testing and mocking, use FastAPI's dependency injection:
+
+```python
+# Define a dependency
+def get_image_service_dependency():
+    service_settings = {
+        'width': settings.DEFAULT_WIDTH,
+        'height': settings.DEFAULT_HEIGHT,
+        'bg_color': settings.DEFAULT_BG_COLOR
+    }
+    return get_image_service(ImageServiceType.ENHANCED.value, service_settings)
+
+# Use in endpoint
+@router.post("/generate-carousel")
+async def generate_carousel(
+    request: CarouselRequest,
+    image_service = Depends(get_image_service_dependency)
+):
+    # Use image_service
+```
