@@ -114,6 +114,26 @@ def function_with_types_in_docstring(param1: int, param2: str) -> bool:
 - Aim for at least 80% code coverage
 - Test structure should mirror code structure
 
+## Documentation Maintenance
+
+When updating documentation, you can use the `scripts/docs-structure.sh` utility script to ensure all files are properly organized in the documentation structure. This script:
+
+- Creates the necessary directory structure
+- Copies documentation files to the appropriate locations
+- Generates a documentation index file
+
+Run it from the project root with:
+
+```bash
+./scripts/docs-structure.sh
+```
+
+Make it executable:
+
+```bash
+chmod +x scripts/docs-structure.sh
+```
+
 ## Git Workflow
 
 ### Branching Strategy
