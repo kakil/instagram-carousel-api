@@ -97,12 +97,26 @@ The application uses a centralized configuration system based on Pydantic's `Bas
 | `ALLOW_METHODS` | Allowed HTTP methods | "*" | No |
 | `ALLOW_HEADERS` | Allowed HTTP headers | "*" | No |
 
+### Security Settings
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `RATE_LIMIT_MAX_REQUESTS` | Maximum requests per window | 100 | No |
+| `RATE_LIMIT_WINDOW_SECONDS` | Time window for rate limiting in seconds | 60 | No |
+| `ENABLE_HTTPS_REDIRECT` | Redirect HTTP to HTTPS in production | False | No |
+
 ## Production Configuration Recommendations
 
 1. **Security settings:**
-   - Set a strong, unique `API_KEY`
+   - Set a strong, unique `API_KEY` (minimum 32 characters recommended)
+     ```
+     # Generate a secure random API key
+     python -c "import secrets; print(secrets.token_urlsafe(32))"
+     ```
    - Set specific `ALLOW_ORIGINS` instead of wildcard "*"
    - Set `DEBUG=False`
+   - Set `ENABLE_HTTPS_REDIRECT=True`
+   - Configure appropriate rate limits based on expected usage
 
 2. **Path settings:**
    - Review and set appropriate paths for your server
@@ -116,20 +130,25 @@ The application uses a centralized configuration system based on Pydantic's `Bas
 
 ```dotenv
 DEBUG=True
+API_KEY=""  # Can be empty in development
 PUBLIC_BASE_URL="http://localhost:5001"
 PRODUCTION=False
 LOG_LEVEL="DEBUG"
+ALLOW_ORIGINS="*"
 ```
 
 ### Production Environment
 
 ```dotenv
 DEBUG=False
+API_KEY="your-secure-api-key-here"
 PUBLIC_BASE_URL="https://api.yourdomain.com"
 PRODUCTION=True
 LOG_LEVEL="INFO"
-API_KEY="your-secure-api-key"
 ALLOW_ORIGINS="https://yourdomain.com,https://admin.yourdomain.com"
+RATE_LIMIT_MAX_REQUESTS=50
+RATE_LIMIT_WINDOW_SECONDS=60
+ENABLE_HTTPS_REDIRECT=True
 ```
 
 ## Custom Font Configuration
@@ -148,6 +167,40 @@ DEFAULT_FONT="YourFont.ttf"
 DEFAULT_FONT_BOLD="YourFont-Bold.ttf"
 ```
 
+## Security Considerations
+
+### API Key Authentication
+
+API key authentication is used to secure the API endpoints. This requires clients to include the API key in either:
+- The `X-API-Key` header
+- The `api_key` query parameter
+
+Example curl request:
+```bash
+curl -H "X-API-Key: your-api-key" http://localhost:5001/api/v1/generate-carousel
+```
+
+### Rate Limiting
+
+Rate limiting restricts the number of requests a client can make within a specific time window. This helps prevent abuse and ensures fair usage.
+
+Default settings:
+- 100 requests per minute per IP address for general endpoints
+- 20 requests per minute per IP address for resource-intensive endpoints
+
+### File Access Validation
+
+File access validation prevents directory traversal attacks when accessing generated carousel images. The validation ensures:
+- Carousel IDs consist only of alphanumeric characters, hyphens, and underscores
+- Filenames follow a safe pattern and don't contain path traversal sequences
+
+### Security Headers
+
+The API automatically adds security headers to all responses:
+- `X-Content-Type-Options: nosniff` - Prevents MIME type sniffing
+- `X-XSS-Protection: 1; mode=block` - Enables browser XSS protection
+- `Strict-Transport-Security` - Enforces HTTPS usage (production only)
+
 ## Troubleshooting Configuration Issues
 
 If you encounter issues with configuration:
@@ -157,3 +210,7 @@ If you encounter issues with configuration:
 3. For path issues, check that all referenced directories exist
 4. Review logs for configuration-related errors at startup
 5. Ensure production directories have correct permissions
+6. Test API key authentication with curl:
+   ```bash
+   curl -H "X-API-Key: your-api-key" http://your-api-domain/health
+   ```

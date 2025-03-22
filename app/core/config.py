@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator
 from dotenv import load_dotenv
 import os
-from typing import Tuple, Optional, List, Any
+from typing import Tuple, Optional, List, Any, Union
 from pathlib import Path
 
 # Load environment variables from .env file
@@ -44,10 +44,36 @@ class Settings(BaseSettings):
     )
 
     # CORS settings
-    ALLOW_ORIGINS: List[str] = Field(default=["*"], description="Allowed CORS origins")
-    ALLOW_CREDENTIALS: bool = Field(default=True, description="Allow credentials in CORS")
-    ALLOW_METHODS: List[str] = Field(default=["*"], description="Allowed HTTP methods in CORS")
-    ALLOW_HEADERS: List[str] = Field(default=["*"], description="Allowed HTTP headers in CORS")
+    ALLOW_ORIGINS: List[str] = Field(
+        default_factory=lambda: os.getenv("ALLOW_ORIGINS", "*").split(","),
+        description="Allowed CORS origins"
+    )
+    ALLOW_CREDENTIALS: bool = Field(
+        default_factory=lambda: os.getenv("ALLOW_CREDENTIALS", "True").lower() == "true",
+        description="Allow credentials in CORS"
+    )
+    ALLOW_METHODS: List[str] = Field(
+        default_factory=lambda: os.getenv("ALLOW_METHODS", "*").split(","),
+        description="Allowed HTTP methods in CORS"
+    )
+    ALLOW_HEADERS: List[str] = Field(
+        default_factory=lambda: os.getenv("ALLOW_HEADERS", "*").split(","),
+        description="Allowed HTTP headers in CORS"
+    )
+
+    # Security settings
+    RATE_LIMIT_MAX_REQUESTS: int = Field(
+        default_factory=lambda: int(os.getenv("RATE_LIMIT_MAX_REQUESTS", "100")),
+        description="Maximum requests per window for rate limiting"
+    )
+    RATE_LIMIT_WINDOW_SECONDS: int = Field(
+        default_factory=lambda: int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60")),
+        description="Time window for rate limiting in seconds"
+    )
+    ENABLE_HTTPS_REDIRECT: bool = Field(
+        default_factory=lambda: os.getenv("ENABLE_HTTPS_REDIRECT", "False").lower() == "true",
+        description="Redirect HTTP to HTTPS in production"
+    )
 
     # Image generation settings
     DEFAULT_FONT: str = Field(
@@ -128,6 +154,22 @@ class Settings(BaseSettings):
             return (r, g, b)
         except (ValueError, TypeError):
             return (18, 18, 18)  # Default fallback
+
+    @field_validator("ALLOW_ORIGINS", mode="before")
+    def parse_allow_origins(cls, v: Union[List[str], str]) -> List[str]:
+        """Parse ALLOW_ORIGINS from environment variable if needed."""
+        if isinstance(v, list):
+            return v
+
+        if isinstance(v, str):
+            # Special case for the wildcard
+            if v.strip() == "*":
+                return ["*"]
+
+            # Split by comma and trim whitespace
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+
+        return ["*"]  # Default fallback
 
     def get_full_api_prefix(self) -> str:
         """Get the full API prefix with version."""

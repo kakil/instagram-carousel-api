@@ -13,6 +13,7 @@ from pathlib import Path
 from app.services.image_service import get_image_service, ImageServiceType
 from app.services import storage_service
 from app.core.config import settings
+from app.api.security import validate_file_access, rate_limit
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ class CarouselRequest(BaseModel):
     include_logo: bool = Field(False, description="Whether to include a logo")
     logo_path: Optional[str] = Field(None, description="Path to logo file")
     settings: Optional[Dict[str, Any]] = Field(None,
-                                     description="Optional settings for image generation")
+                                               description="Optional settings for image generation")
 
     class Config:
         schema_extra = {
@@ -68,7 +69,7 @@ class CarouselResponse(BaseModel):
     slides: List[SlideResponse] = Field(...,
                                         description="Generated slide images")
     processing_time: Optional[float] = Field(None,
-                                   description="Processing time in seconds")
+                                             description="Processing time in seconds")
     warnings: List[str] = Field([],
                                 description="Any warnings during processing")
 
@@ -118,13 +119,19 @@ def get_enhanced_image_service():
     return get_image_service(ImageServiceType.ENHANCED.value, service_settings)
 
 
+# Apply more aggressive rate limiting to generation endpoints
+heavy_rate_limit = rate_limit(max_requests=20, window_seconds=60)
+
+
 @router.post("/generate-carousel", response_model=CarouselResponse,
              tags=["carousel"])
 async def generate_carousel(
-    request: CarouselRequest,
-    background_tasks: BackgroundTasks,
-    req: Request,
-    image_service = Depends(get_enhanced_image_service)
+        request: CarouselRequest,
+        background_tasks: BackgroundTasks,
+        req: Request,
+        image_service=Depends(get_enhanced_image_service),
+        # Apply more strict rate limiting for resource-intensive endpoints
+        _: None = Depends(heavy_rate_limit)
 ):
     """Generate carousel images from provided text content"""
     start_time = await log_request_info(req)
@@ -194,10 +201,12 @@ async def generate_carousel(
              response_model=CarouselResponseWithUrls,
              tags=["carousel"])
 async def generate_carousel_with_urls(
-    request: CarouselRequest,
-    background_tasks: BackgroundTasks,
-    req: Request,
-    image_service = Depends(get_enhanced_image_service)
+        request: CarouselRequest,
+        background_tasks: BackgroundTasks,
+        req: Request,
+        image_service=Depends(get_enhanced_image_service),
+        # Apply more strict rate limiting for resource-intensive endpoints
+        _: None = Depends(heavy_rate_limit)
 ):
     """Generate carousel images and return URLs for temporary access"""
     try:
@@ -251,6 +260,9 @@ async def generate_carousel_with_urls(
 @router.get("/temp/{carousel_id}/{filename}", tags=["files"])
 async def get_temp_file(carousel_id: str, filename: str):
     """Serve a temporary file with proper content type"""
+    # Validate file access parameters to prevent directory traversal
+    validate_file_access(carousel_id, filename)
+
     # Log request info
     logger.info(f"File request: carousel_id={carousel_id}, filename={filename}")
 
