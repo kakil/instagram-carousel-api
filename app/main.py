@@ -18,7 +18,7 @@ import time
 
 from app.core.config import settings
 from app.services.storage_service import StorageService
-from app.api.security import get_api_key, rate_limit
+from app.api.security import get_api_key, rate_limit, validate_file_access
 
 # Configure logging
 logging.basicConfig(
@@ -66,8 +66,6 @@ def create_app() -> FastAPI:
         description="API for generating Instagram carousel images with consistent styling",
         version="1.0.0",
         lifespan=lifespan,
-        docs_url=None if settings.PRODUCTION else "/docs",  # Hide docs in production
-        redoc_url=None if settings.PRODUCTION else "/redoc",  # Hide redoc in production
     )
 
     # Configure CORS with more restrictive settings in production
@@ -120,21 +118,6 @@ def create_app() -> FastAPI:
 
         return response
 
-    # Security headers middleware for all responses
-    @app.middleware("http")
-    async def add_security_headers(request: Request, call_next):
-        response = await call_next(request)
-
-        # Add security headers
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-
-        # Only add HSTS header in production and for HTTPS requests
-        if settings.PRODUCTION and not request.url.scheme == "http":
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-
-        return response
-
     # Mount static directories
     app.mount("/static", StaticFiles(directory=str(settings.STATIC_DIR)), name="static")
 
@@ -148,18 +131,16 @@ def create_app() -> FastAPI:
             "version": "1.0.0",
         }
 
-    # Redirect root to docs in development, or a simple message in production
+    # Redirect root to docs
     @app.get("/", include_in_schema=False)
     async def root():
-        if settings.PRODUCTION:
-            return {"message": "Instagram Carousel Generator API"}
-        else:
-            return RedirectResponse(url="/docs")
+        return RedirectResponse(url="/docs")
 
     # Include the API router with version prefix and security dependency
+    # We import here to avoid circular imports
     from app.api.endpoints import router as api_router
 
-    # Apply API key security and rate limiting to all API endpoints
+    # Apply API key security to all API endpoints
     # Public endpoints like health check are defined directly in this file
     app.include_router(
         api_router,
