@@ -1,0 +1,55 @@
+classDiagram
+    class BaseImageService {
+        <<abstract>>
+        +__init__(settings: Dict)
+        +sanitize_text(text: str): str
+        +safe_load_font(font_path, size, fallback_size): ImageFont
+        +create_carousel_images(carousel_title, slides_data, carousel_id, include_logo, logo_path): List[Dict]
+        +create_slide_image(title, text, slide_number, total_slides, include_logo, logo_path)* : Image
+        +create_gradient_text(draw, text, position, font, width, colors)* : Tuple
+        +create_error_slide(slide_number, total_slides, error_message)* : Image
+    }
+    
+    class StandardImageService {
+        +create_slide_image(title, text, slide_number, total_slides, include_logo, logo_path): Image
+        +create_gradient_text(draw, text, position, font, width, colors): Tuple
+        +create_error_slide(slide_number, total_slides, error_message): Image
+    }
+    
+    class EnhancedImageService {
+        +enhanced_sanitize_text(text: str): str
+        +create_slide_image(title, text, slide_number, total_slides, include_logo, logo_path): Image
+        +create_gradient_text(draw, text, position, font, width, colors): Tuple
+        +create_error_slide(slide_number, total_slides, error_message): Image
+    }
+    
+    class ImageServiceType {
+        <<enumeration>>
+        STANDARD
+        ENHANCED
+    }
+    
+    class Factory {
+        +get_image_service(service_type: str, settings: Dict): BaseImageService
+        +get_default_image_service(settings: Dict): BaseImageService
+    }
+    
+    class StorageService {
+        -temp_dir: Path
+        +__init__(temp_dir: Optional[Path])
+        +_get_temp_dir(): str
+        +save_carousel_images(carousel_id, images_data, base_url): List[str]
+        +schedule_cleanup(background_tasks, directory_path, hours)
+        +cleanup_old_files()
+        +get_file_path(carousel_id, filename): Optional[Path]
+        +get_content_type(filename): str
+    }
+    
+    BaseImageService <|-- StandardImageService
+    BaseImageService <|-- EnhancedImageService
+    Factory ..> BaseImageService : creates
+    Factory ..> ImageServiceType : uses
+    
+    note for BaseImageService "Abstract base class defining\nthe image service interface"
+    note for EnhancedImageService "Improved implementation with\nbetter error handling and rendering"
+    note for Factory "Factory pattern implementation\nfor service instantiation"

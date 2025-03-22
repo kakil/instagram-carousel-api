@@ -1,0 +1,54 @@
+instagram_carousel_generator/
+├── app/                           # Main application package
+│   ├── __init__.py                # Package init with version and imports
+│   ├── main.py                    # Application entry point
+│   ├── api/                       # API endpoints
+│   │   ├── __init__.py
+│   │   └── endpoints.py           # API route definitions
+│   ├── core/                      # Core functionality
+│   │   ├── __init__.py
+│   │   └── config.py              # Configuration management
+│   ├── models/                    # Data models
+│   │   ├── __init__.py
+│   │   └── models.py              # Pydantic models for requests/responses
+│   ├── services/                  # Business logic services
+│   │   ├── __init__.py
+│   │   ├── storage_service.py     # Service for file storage
+│   │   └── image_service/         # Image generation services
+│   │       ├── __init__.py        # Service public interfaces
+│   │       ├── base_image_service.py     # Base abstract class
+│   │       ├── standard_image_service.py # Standard implementation
+│   │       ├── enhanced_image_service.py # Enhanced implementation
+│   │       └── factory.py         # Factory for service creation
+│   └── utils/                     # Utility functions
+│       ├── __init__.py
+│       └── image_utils.py         # Image processing utilities
+├── static/                        # Static assets
+│   ├── assets/                    # Fonts, logos, etc.
+│   │   ├── fonts/
+│   │   └── logos/
+│   └── temp/                      # Temporary storage for generated images
+├── tests/                         # Test suite
+│   ├── __init__.py
+│   ├── conftest.py                # Test fixtures
+│   ├── test_api.py                # API endpoint tests
+│   └── test_image_service.py      # Image service tests
+├── scripts/                       # Utility scripts
+│   └── cleanup_temp.py            # Cleanup script for temp files
+├── docs/                          # Documentation
+│   ├── configuration.md           # Configuration guide
+│   ├── n8n-workflow-implementation.md
+│   └── images/                    # Documentation images
+│       ├── architecture-diagram.png
+│       ├── workflow-diagram.png
+│       └── n8n-workflow.png
+├── .env.example                   # Example environment file
+├── .gitignore                     # Git ignore file
+├── LICENSE                        # Project license
+├── README.md                      # Project README
+├── pyproject.toml                 # Python project configuration
+├── requirements.txt               # Core dependencies
+├── requirements-dev.txt           # Development dependencies
+├── run.py                         # Convenience script to run app
+├── server.py                      # Simple test server
+└── setup.py                       # Package installation script

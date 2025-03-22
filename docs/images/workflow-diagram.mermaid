@@ -1,0 +1,39 @@
+flowchart LR
+    subgraph "Content Creation"
+        GS["Google Sheets"]
+    end
+
+    subgraph "Automation"
+        N8N["n8n Workflow"]
+    end
+
+    subgraph "Image Generation"
+        API["Carousel API"]
+        IG["Image Generator"]
+        TS["Temporary Storage"]
+    end
+
+    subgraph "Publishing"
+        IGAPI["Instagram Graph API"]
+        IGACC["Instagram Business Account"]
+    end
+
+    GS -->|1. Content Data| N8N
+    N8N -->|2. Request Image Generation| API
+    API -->|3. Generate Images| IG
+    IG -->|4. Store Images| TS
+    TS -->|5. Return Image URLs| API
+    API -->|6. Return Image URLs| N8N
+    N8N -->|7. Post with Images| IGAPI
+    IGAPI -->|8. Publish Carousel| IGACC
+    N8N -->|9. Update Status| GS
+
+    classDef content fill:#f9d5e5,stroke:#333,stroke-width:1px;
+    classDef automation fill:#eeac99,stroke:#333,stroke-width:1px;
+    classDef image fill:#e06377,stroke:#333,stroke-width:1px;
+    classDef publish fill:#c83349,stroke:#333,stroke-width:1px;
+    
+    class GS content;
+    class N8N automation;
+    class API,IG,TS image;
+    class IGAPI,IGACC publish;

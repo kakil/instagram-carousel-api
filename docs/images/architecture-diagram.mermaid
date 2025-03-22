@@ -1,0 +1,75 @@
+graph TB
+    subgraph "External Systems"
+        Client["Client Application"]
+        IGApi["Instagram Graph API"]
+        n8n["n8n Workflow Engine"]
+    end
+
+    subgraph "API Layer"
+        API["FastAPI Application"]
+        Router["API Router"]
+        Middleware["Middleware<br>(Authentication, CORS)"]
+    end
+
+    subgraph "Service Layer"
+        IS["Image Service"]
+        SS["Storage Service"]
+    end
+
+    subgraph "Image Service Layer"
+        BIS["BaseImageService<br>(Abstract)"]
+        SIS["StandardImageService"]
+        EIS["EnhancedImageService"]
+    end
+
+    subgraph "Storage Layer"
+        TD["Temporary Directory"]
+    end
+
+    subgraph "Utility Layer"
+        Utils["Utility Functions"]
+    end
+
+    subgraph "Configuration"
+        Config["Settings<br>(Environment Variables)"]
+    end
+
+    %% External connections
+    Client -->|HTTP Requests| API
+    API -->|Image URLs| Client
+    n8n -->|Generate Requests| API
+    n8n -->|Post Carousel| IGApi
+
+    %% API Layer connections
+    API --> Router
+    API --> Middleware
+    Router -->|Validate Requests| IS
+    Router -->|Serve Files| SS
+
+    %% Service Layer connections
+    IS --> BIS
+    BIS --> SIS
+    BIS --> EIS
+    IS -->|Store Temp Files| SS
+    SS -->|Manage Files| TD
+
+    %% Configuration connections
+    Config -->|Configure| API
+    Config -->|Configure| IS
+    Config -->|Configure| SS
+
+    %% Utils connections
+    Utils -->|Support| IS
+    Utils -->|Support| SS
+
+    classDef primary fill:#3178c6,stroke:#333,stroke-width:1px,color:white;
+    classDef secondary fill:#5c93ce,stroke:#333,stroke-width:1px,color:white;
+    classDef external fill:#f5f5f5,stroke:#333,stroke-width:1px,color:black;
+    classDef config fill:#fad02c,stroke:#333,stroke-width:1px,color:black;
+    classDef storage fill:#a4c2f4,stroke:#333,stroke-width:1px,color:black;
+
+    class API,Router,Middleware primary;
+    class IS,SS,BIS,SIS,EIS secondary;
+    class Client,IGApi,n8n external;
+    class Config config;
+    class TD,Utils storage;
