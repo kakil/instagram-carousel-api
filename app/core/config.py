@@ -29,9 +29,19 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = Field(default="Instagram Carousel Generator", description="Project name")
     API_KEY: Optional[str] = Field(default=None, description="API key for authentication")
 
+    # Public access settings
+    PUBLIC_BASE_URL: str = Field(
+        default_factory=lambda: os.getenv("PUBLIC_BASE_URL", "http://localhost:5001"),
+        description="Base URL for public access to the API"
+    )
+
     # Server settings
     HOST: str = Field(default_factory=lambda: os.getenv("HOST", "localhost"), description="Server host")
     PORT: int = Field(default_factory=lambda: int(os.getenv("PORT", "5001")), description="Server port")
+    PRODUCTION: bool = Field(
+        default_factory=lambda: os.getenv("PRODUCTION", "").lower() == "true",
+        description="Flag indicating if the app is running in production mode"
+    )
 
     # CORS settings
     ALLOW_ORIGINS: List[str] = Field(default=["*"], description="Allowed CORS origins")
@@ -76,6 +86,15 @@ class Settings(BaseSettings):
     STATIC_DIR: Path = Field(default_factory=lambda: BASE_DIR / "static", description="Static files directory")
     ASSETS_DIR: Path = Field(default_factory=lambda: BASE_DIR / "static" / "assets", description="Assets directory")
     TEMP_DIR: Path = Field(default_factory=lambda: BASE_DIR / "static" / "temp", description="Temporary files directory")
+
+    # Production paths
+    PRODUCTION_TEMP_DIR: Path = Field(
+        default_factory=lambda: Path(os.getenv(
+            "PRODUCTION_TEMP_DIR",
+            "/var/www/api.kitwanaakil.com/public_html/instagram-carousel-api/static/temp"
+        )),
+        description="Path to temporary files directory in production"
+    )
 
     # Storage settings
     TEMP_FILE_LIFETIME_HOURS: int = Field(

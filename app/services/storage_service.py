@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timedelta
 import uuid
 from fastapi import BackgroundTasks
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from pathlib import Path
 
 from app.core.config import settings
@@ -21,15 +21,15 @@ logger = logging.getLogger(__name__)
 class StorageService:
     """Service for managing temporary file storage and cleanup."""
 
-    def __init__(self, temp_dir: Optional[str] = None):
+    def __init__(self, temp_dir: Optional[Union[str, Path]] = None):
         """
         Initialize the storage service.
 
         Args:
             temp_dir: Path to the temporary directory (overrides default)
         """
-        self.temp_dir = temp_dir if temp_dir is not None else self._get_temp_dir()
-        os.makedirs(self.temp_dir, exist_ok=True)
+        self.temp_dir = Path(temp_dir) if temp_dir is not None else Path(self._get_temp_dir())
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Storage service initialized with temp_dir: {self.temp_dir}")
 
     def _get_temp_dir(self) -> str:
@@ -48,13 +48,14 @@ class StorageService:
 
         # If we're in production (check for some indicator in env)
         if os.getenv("PRODUCTION", "").lower() == "true":
-            # Use the production path
-            return "/var/www/api.kitwanaakil.com/public_html/instagram-carousel-api/static/temp"
+            # Use the production path from environment or a sensible default
+            return os.getenv(
+                "PRODUCTION_TEMP_DIR",
+                str(settings.BASE_DIR / "static" / "temp")
+            )
 
         # For development environment, use a local directory
-        # Get the absolute path to the directory containing this file
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        return os.path.join(base_dir, "static", "temp")
+        return str(settings.BASE_DIR / "static" / "temp")
 
     def save_carousel_images(
             self,
@@ -74,8 +75,8 @@ class StorageService:
             List of public URLs for the saved images
         """
         # Create directory for this carousel
-        carousel_dir = os.path.join(self.temp_dir, carousel_id)
-        os.makedirs(carousel_dir, exist_ok=True)
+        carousel_dir = self.temp_dir / carousel_id
+        carousel_dir.mkdir(exist_ok=True)
 
         # Save images and generate URLs
         public_urls = []
@@ -86,12 +87,13 @@ class StorageService:
                 binary_content = bytes.fromhex(image['content'])
 
                 # Save to file
-                file_path = os.path.join(carousel_dir, image['filename'])
+                file_path = carousel_dir / image['filename']
                 with open(file_path, 'wb') as f:
                     f.write(binary_content)
 
-                # Generate public URL
-                public_url = f"{base_url.rstrip('/')}/api/temp/{carousel_id}/{image['filename']}"
+                # Generate public URL using the API prefix from settings
+                api_prefix = settings.get_full_api_prefix()
+                public_url = f"{base_url.rstrip('/')}{api_prefix}/temp/{carousel_id}/{image['filename']}"
                 public_urls.append(public_url)
 
             except Exception as e:
@@ -105,7 +107,7 @@ class StorageService:
     def schedule_cleanup(
             self,
             background_tasks: BackgroundTasks,
-            directory_path: str,
+            directory_path: Union[str, Path],
             hours: int = 24
     ):
         """
@@ -118,7 +120,8 @@ class StorageService:
         """
         # Set a timestamp for cleanup
         try:
-            cleanup_file = os.path.join(directory_path, ".cleanup")
+            directory_path = Path(directory_path)
+            cleanup_file = directory_path / ".cleanup"
             with open(cleanup_file, 'w') as f:
                 cleanup_time = datetime.now() + timedelta(hours=hours)
                 f.write(cleanup_time.isoformat())
@@ -128,22 +131,23 @@ class StorageService:
             logger.error(f"Failed to schedule cleanup for {directory_path}: {e}")
 
     def cleanup_old_files(self):
-        """Remove temporary files older than 24 hours."""
+        """Remove temporary files older than the configured lifetime."""
         try:
             now = datetime.now()
             count = 0
+            hours = settings.TEMP_FILE_LIFETIME_HOURS
 
             # Check all carousel directories
             for carousel_dir in os.listdir(self.temp_dir):
-                dir_path = os.path.join(self.temp_dir, carousel_dir)
+                dir_path = self.temp_dir / carousel_dir
 
                 # Skip if not a directory
-                if not os.path.isdir(dir_path):
+                if not dir_path.is_dir():
                     continue
 
                 # Check for cleanup file
-                cleanup_file = os.path.join(dir_path, ".cleanup")
-                if os.path.exists(cleanup_file):
+                cleanup_file = dir_path / ".cleanup"
+                if cleanup_file.exists():
                     try:
                         with open(cleanup_file, 'r') as f:
                             cleanup_time = datetime.fromisoformat(f.read().strip())
@@ -156,15 +160,17 @@ class StorageService:
                             f"Error parsing cleanup file for {dir_path}: {e}")
                         # Fallback to modification time
                         file_modified = datetime.fromtimestamp(
-                            os.path.getmtime(dir_path))
-                        if now - file_modified > timedelta(hours=24):
+                            os.path.getmtime(dir_path)
+                        )
+                        if now - file_modified > timedelta(hours=hours):
                             shutil.rmtree(dir_path)
                             count += 1
                 else:
                     # No cleanup file, use modification time
                     file_modified = datetime.fromtimestamp(
-                        os.path.getmtime(dir_path))
-                    if now - file_modified > timedelta(hours=24):
+                        os.path.getmtime(dir_path)
+                    )
+                    if now - file_modified > timedelta(hours=hours):
                         shutil.rmtree(dir_path)
                         count += 1
 
@@ -174,7 +180,7 @@ class StorageService:
         except Exception as e:
             logger.error(f"Error cleaning up temporary files: {e}")
 
-    def get_file_path(self, carousel_id: str, filename: str) -> Optional[str]:
+    def get_file_path(self, carousel_id: str, filename: str) -> Optional[Path]:
         """
         Get the file path for a carousel image.
 
@@ -185,8 +191,8 @@ class StorageService:
         Returns:
             Full path to the file or None if not found
         """
-        file_path = os.path.join(self.temp_dir, carousel_id, filename)
-        if os.path.exists(file_path) and os.path.isfile(file_path):
+        file_path = self.temp_dir / carousel_id / filename
+        if file_path.exists() and file_path.is_file():
             return file_path
         return None
 

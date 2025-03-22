@@ -4,9 +4,10 @@ import uuid
 import os
 import logging
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
 import traceback
+from pathlib import Path
 
 # Import the new image service module
 from app.services.image_service import get_image_service, ImageServiceType
@@ -29,8 +30,8 @@ class CarouselRequest(BaseModel):
     slides: List[SlideContent] = Field(...,
                                        description="List of slide contents")
     include_logo: bool = Field(False, description="Whether to include a logo")
-    logo_path: str = Field(None, description="Path to logo file")
-    settings: Dict[str, Any] = Field(None,
+    logo_path: Optional[str] = Field(None, description="Path to logo file")
+    settings: Optional[Dict[str, Any]] = Field(None,
                                      description="Optional settings for image generation")
 
     class Config:
@@ -66,7 +67,7 @@ class CarouselResponse(BaseModel):
                              description="Unique identifier for the carousel")
     slides: List[SlideResponse] = Field(...,
                                         description="Generated slide images")
-    processing_time: float = Field(None,
+    processing_time: Optional[float] = Field(None,
                                    description="Processing time in seconds")
     warnings: List[str] = Field([],
                                 description="Any warnings during processing")
@@ -143,13 +144,13 @@ async def generate_carousel(
                     f"Non-ASCII characters detected in slide {i + 1}")
 
         # Default settings if none provided
-        settings = request.settings or {
-            'width': 1080,
-            'height': 1080,
-            'bg_color': (18, 18, 18),
-            'title_font': 'Arial Bold.ttf',
-            'text_font': 'Arial.ttf',
-            'nav_font': 'Arial.ttf'
+        service_settings = request.settings or {
+            'width': settings.DEFAULT_WIDTH,
+            'height': settings.DEFAULT_HEIGHT,
+            'bg_color': settings.DEFAULT_BG_COLOR,
+            'title_font': settings.DEFAULT_FONT_BOLD,
+            'text_font': settings.DEFAULT_FONT,
+            'nav_font': settings.DEFAULT_FONT
         }
 
         # Generate carousel images using the image service
@@ -214,8 +215,8 @@ async def generate_carousel_with_urls(
             request.logo_path
         )
 
-        # Determine base URL for public access
-        base_url = str(req.base_url).rstrip('/')
+        # Determine base URL for public access - use configuration
+        base_url = settings.PUBLIC_BASE_URL
 
         # Save images and get public URLs
         public_urls = storage_service.save_carousel_images(
@@ -224,12 +225,12 @@ async def generate_carousel_with_urls(
             base_url
         )
 
-        # Schedule cleanup of these files after 24 hours
-        # Update: Use temp_dir instead of TEMP_DIR
+        # Schedule cleanup of these files after configured lifetime
+        carousel_dir = storage_service.temp_dir / carousel_id
         storage_service.schedule_cleanup(
             background_tasks,
-            os.path.join(storage_service.temp_dir, carousel_id),
-            hours=24
+            carousel_dir,
+            hours=settings.TEMP_FILE_LIFETIME_HOURS
         )
 
         return {
@@ -250,27 +251,20 @@ async def generate_carousel_with_urls(
 @router.get("/temp/{carousel_id}/{filename}", tags=["files"])
 async def get_temp_file(carousel_id: str, filename: str):
     """Serve a temporary file with proper content type"""
-    # Use Path for better path handling
-    from pathlib import Path
-
     # Log request info
     logger.info(f"File request: carousel_id={carousel_id}, filename={filename}")
 
-    # Construct the file path
-    # Update: Use temp_dir instead of TEMP_DIR
-    file_path = Path(storage_service.temp_dir) / carousel_id / filename
+    # Get the file path using the storage service
+    file_path = storage_service.get_file_path(carousel_id, filename)
 
     # Log file path details
     logger.info(f"File path: {file_path}")
-    logger.info(f"File exists: {file_path.exists()}")
+    logger.info(f"File exists: {file_path.exists() if file_path else False}")
     logger.info(f"temp_dir: {storage_service.temp_dir}")
 
-    # Log for debugging
-    logger.info(f"Requested file: {file_path}, exists: {file_path.exists()}")
-
-    if not file_path.exists() or not file_path.is_file():
+    if not file_path or not file_path.exists() or not file_path.is_file():
         logger.error(f"File not found: {file_path}")
-        if file_path.parent.exists():
+        if file_path and file_path.parent.exists():
             logger.info(
                 f"Parent directory contents: {list(file_path.parent.iterdir())}")
         raise HTTPException(status_code=404, detail="File not found")
@@ -289,27 +283,26 @@ async def get_temp_file(carousel_id: str, filename: str):
 @router.get("/debug-temp", tags=["debug"])
 async def debug_temp():
     """Debug endpoint to check temp directory contents"""
-    # Update: Use temp_dir instead of TEMP_DIR
     temp_dir = storage_service.temp_dir
     contents = {}
 
     # List all carousel directories
     try:
         for carousel_id in os.listdir(temp_dir):
-            carousel_path = os.path.join(temp_dir, carousel_id)
-            if os.path.isdir(carousel_path):
+            carousel_path = temp_dir / carousel_id
+            if carousel_path.is_dir():
                 contents[carousel_id] = os.listdir(carousel_path)
 
         return {
-            "temp_dir": temp_dir,
+            "temp_dir": str(temp_dir),
             "contents": contents,
-            "abs_path": os.path.abspath(temp_dir),
-            "exists": os.path.exists(temp_dir),
-            "is_dir": os.path.isdir(temp_dir)
+            "abs_path": str(temp_dir.absolute()),
+            "exists": temp_dir.exists(),
+            "is_dir": temp_dir.is_dir()
         }
     except Exception as e:
         return {
             "error": str(e),
-            "temp_dir": temp_dir,
-            "abs_path": os.path.abspath(temp_dir)
+            "temp_dir": str(temp_dir),
+            "abs_path": str(temp_dir.absolute())
         }

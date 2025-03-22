@@ -1,0 +1,72 @@
+sequenceDiagram
+    participant Client
+    participant API as API Endpoints
+    participant ImgService as Image Service
+    participant ImgUtils as Image Utilities
+    participant Storage as Storage Service
+    participant FileSystem as File System
+    
+    Client->>API: POST /api/generate-carousel
+    activate API
+    
+    API->>ImgService: create_carousel_images()
+    activate ImgService
+    
+    loop For Each Slide
+        ImgService->>ImgService: create_slide_image()
+        ImgService->>ImgUtils: create_gradient_text()
+        ImgUtils-->>ImgService: Return gradient text image
+        
+        alt Success
+            ImgService->>FileSystem: Save image to temp directory
+            FileSystem-->>ImgService: Return file path
+        else Error
+            ImgService->>ImgService: create_enhanced_error_slide()
+            ImgService->>FileSystem: Save error slide
+        end
+        
+        ImgService->>ImgService: Convert image to hex
+    end
+    
+    ImgService-->>API: Return slide data array
+    deactivate ImgService
+    
+    API->>API: Format response
+    API-->>Client: Return JSON with image data
+    deactivate API
+    
+    Client->>API: POST /api/generate-carousel-with-urls
+    activate API
+    
+    API->>ImgService: create_carousel_images()
+    activate ImgService
+    ImgService-->>API: Return slide data array
+    deactivate ImgService
+    
+    API->>Storage: save_carousel_images()
+    activate Storage
+    
+    Storage->>FileSystem: Save images to temp directory
+    Storage->>Storage: Generate public URLs
+    Storage-->>API: Return URL array
+    deactivate Storage
+    
+    API->>Storage: schedule_cleanup()
+    
+    API-->>Client: Return JSON with URLs
+    deactivate API
+    
+    Client->>API: GET /api/temp/{carousel_id}/{filename}
+    activate API
+    
+    API->>Storage: get_file_path()
+    Storage-->>API: Return file path
+    
+    API->>Storage: get_content_type()
+    Storage-->>API: Return content type
+    
+    API->>FileSystem: Read file
+    FileSystem-->>API: Return file content
+    
+    API-->>Client: Return image with proper content type
+    deactivate API
