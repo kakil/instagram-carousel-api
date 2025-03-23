@@ -14,10 +14,10 @@ from typing import Dict, Any, List, Optional, Tuple
 import traceback
 from pathlib import Path
 
-# Import the service and model dependencies
-from app.services.image_service import get_image_service, ImageServiceType
-from app.services import storage_service
+# Import model dependencies
 from app.core.config import settings
+from app.services.storage_service import StorageService
+from app.services.image_service import BaseImageService
 from app.api.security import validate_file_access, rate_limit
 from app.core.models import (
     SlideContent,
@@ -52,21 +52,15 @@ def cleanup_temp_files(carousel_id: str):
     logger.info(f"Cleaning up temporary files for carousel {carousel_id}")
 
 
-# Create a dependency to provide the image service
-def get_enhanced_image_service():
-    """
-    Dependency that provides the enhanced image service.
-    This allows for easy testing and mocking.
-    """
-    service_settings = {
-        'width': settings.DEFAULT_WIDTH,
-        'height': settings.DEFAULT_HEIGHT,
-        'bg_color': settings.DEFAULT_BG_COLOR,
-        'title_font': settings.DEFAULT_FONT_BOLD,
-        'text_font': settings.DEFAULT_FONT,
-        'nav_font': settings.DEFAULT_FONT
-    }
-    return get_image_service(ImageServiceType.ENHANCED.value, service_settings)
+# Use centralized dependencies
+from app.api.dependencies import (
+    get_enhanced_image_service, 
+    get_standard_image_service,
+    get_storage_service,
+    get_heavy_rate_limit,
+    log_request_info,
+    cleanup_temp_files
+)
 
 
 # Apply more aggressive rate limiting to generation endpoints
@@ -77,12 +71,11 @@ heavy_rate_limit = rate_limit(max_requests=20, window_seconds=60)
 async def generate_carousel(
         request: CarouselRequest,
         background_tasks: BackgroundTasks,
-        http_request: Request,  # Renamed from 'req' to be clearer
-        image_service=Depends(get_enhanced_image_service),
-        _: None = Depends(heavy_rate_limit)
+        http_request: Request,
+        image_service: BaseImageService = Depends(get_enhanced_image_service),
+        _: None = Depends(get_heavy_rate_limit)
 ):
-    start_time = await log_request_info(http_request)  # Update this reference too
-    # Rest of the function remains the same
+    start_time = await log_request_info(http_request) 
     warnings = []
 
     try:
@@ -99,16 +92,6 @@ async def generate_carousel(
                 logger.warning(
                     f"Non-ASCII characters detected in slide {i + 1}"
                 )
-
-        # Default settings if none provided
-        service_settings = request.settings or {
-            'width': settings.DEFAULT_WIDTH,
-            'height': settings.DEFAULT_HEIGHT,
-            'bg_color': settings.DEFAULT_BG_COLOR,
-            'title_font': settings.DEFAULT_FONT_BOLD,
-            'text_font': settings.DEFAULT_FONT,
-            'nav_font': settings.DEFAULT_FONT
-        }
 
         # Generate carousel images using the image service
         result = image_service.create_carousel_images(
@@ -153,16 +136,14 @@ async def generate_carousel(
 async def generate_carousel_with_urls(
         request: CarouselRequest,
         background_tasks: BackgroundTasks,
-        http_request: Request,  # Renamed from 'req' to be clearer
-        image_service=Depends(get_enhanced_image_service),
+        http_request: Request,
+        image_service: BaseImageService = Depends(get_enhanced_image_service),
+        storage_service: StorageService = Depends(get_storage_service),
         _: None = Depends(heavy_rate_limit)
 ):
     try:
         # Log request
-        start_time = await log_request_info(
-            http_request)  # Update this reference too
-
-        # Rest of the function remains the same
+        start_time = await log_request_info(http_request)
 
         # Generate the carousel
         carousel_id, result = await _generate_carousel_content(
@@ -171,7 +152,7 @@ async def generate_carousel_with_urls(
 
         # Process the results
         public_urls = await _save_and_prepare_urls(
-            carousel_id, result, background_tasks
+            carousel_id, result, background_tasks, storage_service
         )
 
         # Prepare and return the response
@@ -209,7 +190,8 @@ async def _generate_carousel_content(
 async def _save_and_prepare_urls(
         carousel_id: str,
         result: List[Dict[str, Any]],
-        background_tasks: BackgroundTasks
+        background_tasks: BackgroundTasks,
+        storage_service: StorageService
 ) -> List[str]:
     """Save images and prepare public URLs for access"""
     # Determine base URL for public access - use configuration
@@ -248,7 +230,11 @@ def _prepare_carousel_response(
 
 
 @router.get("/temp/{carousel_id}/{filename}", tags=["files"])
-async def get_temp_file(carousel_id: str, filename: str):
+async def get_temp_file(
+    carousel_id: str, 
+    filename: str,
+    storage_service: StorageService = Depends(get_storage_service)
+):
     """Serve a temporary file with proper content type"""
     # Validate file access parameters to prevent directory traversal
     validate_file_access(carousel_id, filename)
@@ -284,7 +270,9 @@ async def get_temp_file(carousel_id: str, filename: str):
 
 
 @router.get("/debug-temp", tags=["debug"])
-async def debug_temp():
+async def debug_temp(
+    storage_service: StorageService = Depends(get_storage_service)
+):
     """Debug endpoint to check temp directory contents"""
     temp_dir = storage_service.temp_dir
     contents = {}

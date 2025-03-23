@@ -171,22 +171,22 @@ def test_get_temp_file(app, mock_storage_service, test_request):
     pytest.skip("This test needs deeper fixes to the endpoint file handling logic")
 
 
-# This demonstrates how to use patch for mocking
-@patch("app.api.v1.endpoints.get_enhanced_image_service")  # Patch directly at the usage site
-def test_alternative_mocking_approach(mock_service_factory, app, test_request):
-    """Alternative approach to mocking using patch."""
+# This demonstrates how to use dependency overrides for mocking
+def test_alternative_mocking_approach(app, test_request, mock_image_service, mock_storage_service):
+    """Alternative approach to mocking using dependency overrides."""
     # Setup mock
-    mock_service = MagicMock(spec=BaseImageService)
-    mock_service.create_carousel_images.return_value = [
+    alternative_mock_service = MagicMock(spec=BaseImageService)
+    alternative_mock_service.create_carousel_images.return_value = [
         {
             "filename": "slide_1.png",
             "content": "different_mock_content"
         }
     ]
-    mock_service_factory.return_value = mock_service
 
     # Use the app fixture and set overrides
     app.dependency_overrides = {
+        get_enhanced_image_service: lambda: alternative_mock_service,
+        get_storage_service: lambda: mock_storage_service,
         get_api_key: lambda: True,
         Request: lambda: test_request,  # Mock the Request dependency
         log_request_info: lambda: time.time(),  # Mock the log_request_info dependency
@@ -215,6 +215,9 @@ def test_alternative_mocking_approach(mock_service_factory, app, test_request):
 
     # Verify just the status code
     assert response.status_code == 200
+    
+    # Verify that our mock was actually used
+    alternative_mock_service.create_carousel_images.assert_called_once()
 
     # Clean up
     app.dependency_overrides = {}

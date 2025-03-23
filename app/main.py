@@ -45,6 +45,13 @@ async def lifespan(app: FastAPI):
     """
     # Startup logic
     logger.info("Starting Instagram Carousel Generator API")
+    
+    # Initialize the dependency injection system
+    from app.core.services_setup import register_services
+    register_services()
+    logger.info("Service registry initialized")
+    
+    # Clean up old files
     storage_service.cleanup_old_files()
 
     yield  # This is where the app runs
@@ -60,6 +67,10 @@ def create_app() -> FastAPI:
     Returns:
         Configured FastAPI application
     """
+    # Initialize the dependency injection system
+    from app.core.services_setup import register_services
+    register_services()
+    
     # Create the FastAPI app with proper configuration
     app = FastAPI(
         title=settings.PROJECT_NAME,
@@ -73,6 +84,12 @@ def create_app() -> FastAPI:
         
         - Current version: v1
         - For more information about versioning, see the `/api-info` endpoint or visit our [API Versioning Guide](/docs#section/Versioning).
+        
+        ## Dependency Injection
+        
+        This API uses dependency injection for service management, which makes components more
+        modular, testable, and extensible. See our dependency injection guide in the documentation
+        for more details.
         """,
         version="1.0.0",
         lifespan=lifespan,
