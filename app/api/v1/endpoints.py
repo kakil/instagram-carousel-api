@@ -34,12 +34,13 @@ router = APIRouter()
 
 
 # Add request logging middleware
-async def log_request_info(request: Request):
+# Add request logging middleware
+async def log_request_info(http_request: Request):  # Renamed parameter here too
     """Log basic request information"""
     start_time = time.time()
-    client_host = request.client.host if request.client else "unknown"
+    client_host = http_request.client.host if http_request.client else "unknown"
     logger.info(
-        f"Request from {client_host} - {request.method} {request.url.path}"
+        f"Request from {client_host} - {http_request.method} {http_request.url.path}"
     )
     return start_time
 
@@ -72,18 +73,16 @@ def get_enhanced_image_service():
 heavy_rate_limit = rate_limit(max_requests=20, window_seconds=60)
 
 
-@router.post("/generate-carousel", response_model=CarouselResponse,
-             tags=["carousel"])
+@router.post("/generate-carousel", response_model=CarouselResponse, tags=["carousel"])
 async def generate_carousel(
         request: CarouselRequest,
         background_tasks: BackgroundTasks,
-        req: Request,
+        http_request: Request,  # Renamed from 'req' to be clearer
         image_service=Depends(get_enhanced_image_service),
-        # Apply more strict rate limiting for resource-intensive endpoints
         _: None = Depends(heavy_rate_limit)
 ):
-    """Generate carousel images from provided text content"""
-    start_time = await log_request_info(req)
+    start_time = await log_request_info(http_request)  # Update this reference too
+    # Rest of the function remains the same
     warnings = []
 
     try:
@@ -154,15 +153,16 @@ async def generate_carousel(
 async def generate_carousel_with_urls(
         request: CarouselRequest,
         background_tasks: BackgroundTasks,
-        req: Request,
+        http_request: Request,  # Renamed from 'req' to be clearer
         image_service=Depends(get_enhanced_image_service),
-        # Apply more strict rate limiting for resource-intensive endpoints
         _: None = Depends(heavy_rate_limit)
 ):
-    """Generate carousel images and return URLs for temporary access"""
     try:
         # Log request
-        start_time = await log_request_info(req)
+        start_time = await log_request_info(
+            http_request)  # Update this reference too
+
+        # Rest of the function remains the same
 
         # Generate the carousel
         carousel_id, result = await _generate_carousel_content(
