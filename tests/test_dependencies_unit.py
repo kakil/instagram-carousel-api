@@ -40,7 +40,6 @@ class TestServiceDependencies:
             mock_get_provider.return_value = mock_provider
             yield mock_provider
     
-    @pytest.mark.xfail(reason="Parameter order mismatch in get method")
     def test_get_enhanced_image_service(self, mock_service_provider):
         """Test get_enhanced_image_service dependency."""
         # Set up mock
@@ -51,12 +50,9 @@ class TestServiceDependencies:
         result = get_enhanced_image_service()
         
         # Verify
-        # TODO: Check if parameters should be (BaseImageService, key="EnhancedImageService")
-        # or (BaseImageService, "EnhancedImageService")
-        mock_service_provider.get.assert_called_once_with(BaseImageService, key="EnhancedImageService")
+        mock_service_provider.get.assert_called_once_with(BaseImageService, "EnhancedImageService")
         assert result is mock_image_service
     
-    @pytest.mark.xfail(reason="Parameter order mismatch in get method")
     def test_get_standard_image_service(self, mock_service_provider):
         """Test get_standard_image_service dependency."""
         # Set up mock
@@ -67,10 +63,9 @@ class TestServiceDependencies:
         result = get_standard_image_service()
         
         # Verify
-        mock_service_provider.get.assert_called_once_with(BaseImageService, key="StandardImageService")
+        mock_service_provider.get.assert_called_once_with(BaseImageService, "StandardImageService")
         assert result is mock_image_service
     
-    @pytest.mark.xfail(reason="Parameter order mismatch in get method")
     def test_get_storage_service(self, mock_service_provider):
         """Test get_storage_service dependency."""
         # Set up mock
@@ -81,7 +76,7 @@ class TestServiceDependencies:
         result = get_storage_service()
         
         # Verify
-        mock_service_provider.get.assert_called_once_with(StorageService)
+        mock_service_provider.get.assert_called_once_with(StorageService, None)
         assert result is mock_storage
 
 
@@ -182,21 +177,25 @@ class TestUtilityDependencies:
         # Verify
         assert result is mock_tasks
     
-    @pytest.mark.xfail(reason="Inconsistent log message order")
     def test_cleanup_temp_files(self):
         """Test cleanup_temp_files logs the cleanup action."""
         with patch('app.api.dependencies.logger') as mock_logger:
             with patch('app.api.dependencies.get_storage_service') as mock_get_storage:
+                from pathlib import Path
+                
                 mock_storage = MagicMock(spec=StorageService)
                 mock_get_storage.return_value = mock_storage
-                mock_storage.temp_dir = "/temp/dir"
+                
+                # Create a Path object for temp_dir
+                mock_storage.temp_dir = Path("/temp/dir")
                 
                 # Call the dependency
                 cleanup_temp_files("test123")
                 
                 # Verify
                 mock_logger.info.assert_called()
-                assert "test123" in mock_logger.info.call_args_list[0][0][0]
-                # Second log line may not exist or have different content
-                # TODO: Make this test more resilient to implementation changes
-                # assert "Scheduling cleanup" in mock_logger.info.call_args_list[1][0][0]
+                
+                # Check if any log message contains our test ID
+                log_messages = [call_args[0][0] for call_args in mock_logger.info.call_args_list]
+                has_test_id = any("test123" in message for message in log_messages)
+                assert has_test_id, "Log messages should contain the carousel ID"

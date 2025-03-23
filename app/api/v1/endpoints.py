@@ -78,7 +78,15 @@ async def generate_carousel(
     start_time = await log_request_info(http_request) 
     warnings = []
 
+    # Validate that slides list is not empty
+    if not request.slides:
+        raise HTTPException(
+            status_code=422,
+            detail="Slides list cannot be empty"
+        )
+        
     try:
+            
         # Create a unique ID for this carousel
         carousel_id = str(uuid.uuid4())[:8]
         logger.info(f"Starting carousel generation for ID: {carousel_id}")
@@ -141,7 +149,15 @@ async def generate_carousel_with_urls(
         storage_service: StorageService = Depends(get_storage_service),
         _: None = Depends(heavy_rate_limit)
 ):
+    # Validate that slides list is not empty
+    if not request.slides:
+        raise HTTPException(
+            status_code=422,
+            detail="Slides list cannot be empty"
+        )
+        
     try:
+            
         # Log request
         start_time = await log_request_info(http_request)
 

@@ -254,9 +254,10 @@ def client_with_mocks(
         get_enhanced_image_service: lambda: mock_image_service,
         get_storage_service: lambda: mock_storage_service,
         get_api_key: lambda: True,
-        log_request_info: lambda: time.time(),  # Mock the request logging dependency
-        Request: lambda: test_request,  # Mock the Request dependency to fix routing issues
-        set_v1_api_version: lambda: None,  # Mock API versioning function
+        # Create async mocks for async dependencies
+        log_request_info: lambda *args, **kwargs: time.time(),  # Mock the request logging dependency
+        Request: lambda *args, **kwargs: test_request,  # Mock the Request dependency to fix routing issues
+        set_v1_api_version: lambda *args, **kwargs: None,  # Mock API versioning function
     }
 
     # Create a test client

@@ -31,6 +31,16 @@ class CarouselRequest(BaseModel):
     include_logo: bool = Field(False, description="Whether to include a logo")
     logo_path: Optional[str] = Field(None, description="Path to logo file")
     settings: Optional[Dict[str, Any]] = Field(None, description="Custom settings for carousel generation")
+    
+    def validate_slides(self) -> None:
+        """
+        Validate that the slides list is not empty.
+        
+        Raises:
+            ValueError: If slides list is empty
+        """
+        if not self.slides:
+            raise ValueError("Slides list cannot be empty")
 
     model_config = {
         "json_schema_extra": {

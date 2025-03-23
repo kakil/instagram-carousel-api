@@ -130,12 +130,19 @@ class StorageService:
         except Exception as e:
             logger.error(f"Failed to schedule cleanup for {directory_path}: {e}")
 
-    def cleanup_old_files(self):
-        """Remove temporary files older than the configured lifetime."""
+    def cleanup_old_files(self, hours: Optional[int] = None):
+        """
+        Remove temporary files older than the specified or configured lifetime.
+        
+        Args:
+            hours: Optional number of hours to use for determining file age.
+                  If not provided, uses the configured lifetime from settings.
+        """
         try:
             now = datetime.now()
             count = 0
-            hours = settings.TEMP_FILE_LIFETIME_HOURS
+            # Use provided hours or fall back to settings
+            cleanup_hours = hours if hours is not None else settings.TEMP_FILE_LIFETIME_HOURS
 
             # Check all carousel directories
             for carousel_dir in os.listdir(self.temp_dir):
@@ -162,7 +169,7 @@ class StorageService:
                         file_modified = datetime.fromtimestamp(
                             os.path.getmtime(dir_path)
                         )
-                        if now - file_modified > timedelta(hours=hours):
+                        if now - file_modified > timedelta(hours=cleanup_hours):
                             shutil.rmtree(dir_path)
                             count += 1
                 else:
@@ -170,7 +177,7 @@ class StorageService:
                     file_modified = datetime.fromtimestamp(
                         os.path.getmtime(dir_path)
                     )
-                    if now - file_modified > timedelta(hours=hours):
+                    if now - file_modified > timedelta(hours=cleanup_hours):
                         shutil.rmtree(dir_path)
                         count += 1
 
@@ -215,6 +222,8 @@ class StorageService:
             return "image/gif"
         elif lower_filename.endswith(".webp"):
             return "image/webp"
+        elif lower_filename.endswith(".svg"):
+            return "image/svg+xml"
         else:
             return "application/octet-stream"
 

@@ -49,9 +49,14 @@ class TestImageServiceParametrized:
         ImageServiceType.STANDARD.value,
         ImageServiceType.ENHANCED.value
     ])
-    @pytest.mark.xfail(reason="Font file not found on test system")
-    def test_service_creation(self, service_type):
+    def test_service_creation(self, service_type, monkeypatch):
         """Test image service creation with different types."""
+        # Mock the font loading to avoid file not found errors
+        from unittest.mock import MagicMock
+        mock_font = MagicMock()
+        monkeypatch.setattr('app.services.image_service.base_image_service.ImageFont.truetype', 
+                           lambda font, size: mock_font)
+        
         # Common settings
         settings = {
             'width': 500,
@@ -68,12 +73,12 @@ class TestImageServiceParametrized:
         # Verify
         assert service is not None
         assert isinstance(service, BaseImageService)
-        assert service.width == settings['width']
-        assert service.height == settings['height']
+        assert service.default_width == settings['width']
+        assert service.default_height == settings['height']
         
         # Verify type-specific implementations
         if service_type == ImageServiceType.ENHANCED.value:
-            assert hasattr(service, "_log_operation")
+            assert hasattr(service, "enhanced_sanitize_text")
     
     @pytest.mark.parametrize("test_image_service, expected_behavior", [
         # Standard service doesn't have advanced error handling
