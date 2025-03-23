@@ -1,0 +1,106 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual deployment'
+        required: true
+        default: 'Manual deployment'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Run tests
+      run: |
+        pytest tests/
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Deploy to Production
+      env:
+        SERVER_IP: ${{ secrets.SERVER_IP }}
+        SERVER_USER: ${{ secrets.SERVER_USER }}
+        DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      run: |
+        # Add server to known hosts
+        mkdir -p ~/.ssh
+        ssh-keyscan $SERVER_IP >> ~/.ssh/known_hosts
+        
+        # Create archive of project
+        git archive --format=tar HEAD | gzip > deployment.tar.gz
+        
+        # Upload to server
+        scp deployment.tar.gz $SERVER_USER@$SERVER_IP:/tmp/
+        
+        # Deploy commands
+        ssh $SERVER_USER@$SERVER_IP << 'EOF'
+          # Extract deployment
+          mkdir -p $DEPLOY_PATH/new-deploy
+          tar -xzf /tmp/deployment.tar.gz -C $DEPLOY_PATH/new-deploy
+          
+          # Install dependencies
+          cd $DEPLOY_PATH/new-deploy
+          python -m venv venv
+          source venv/bin/activate
+          pip install -e .
+          
+          # Create .env file from secrets
+          echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+          
+          # Update symlink to new deployment
+          ln -sfn $DEPLOY_PATH/new-deploy $DEPLOY_PATH/current
+          
+          # Restart service
+          sudo systemctl restart instagram-carousel-api
+          
+          # Clean up
+          rm /tmp/deployment.tar.gz
+        EOF
+        
+        # Verify deployment
+        ssh $SERVER_USER@$SERVER_IP "curl -s http://localhost:5001/health | grep -q 'healthy'"
+
+    - name: Notify on Success
+      if: success()
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: ${{ secrets.MAIL_SERVER }}
+        server_port: ${{ secrets.MAIL_PORT }}
+        username: ${{ secrets.MAIL_USERNAME }}
+        password: ${{ secrets.MAIL_PASSWORD }}
+        subject: "✅ Deployment Successful - Instagram Carousel API"
+        body: "Instagram Carousel API has been successfully deployed to production"
+        to: ${{ secrets.NOTIFICATION_EMAIL }}
+        from: GitHub Actions
+
+    - name: Notify on Failure
+      if: failure()
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: ${{ secrets.MAIL_SERVER }}
+        server_port: ${{ secrets.MAIL_PORT }}
+        username: ${{ secrets.MAIL_USERNAME }}
+        password: ${{ secrets.MAIL_PASSWORD }}
+        subject: "❌ Deployment Failed - Instagram Carousel API"
+        body: "Instagram Carousel API deployment failed. Please check GitHub Actions for details."
+        to: ${{ secrets.NOTIFICATION_EMAIL }}
+        from: GitHub Actions
