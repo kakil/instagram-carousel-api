@@ -47,10 +47,14 @@ async def set_api_version(request: Request, version: str):
     return None
 
 # Include each versioned router with its version prefix and appropriate tags
+# Define a version-specific dependency function
+def set_v1_api_version(request: Request):
+    return set_api_version(request, "v1")
+
 api_router.include_router(
     router_v1,
     prefix="/v1",
-    dependencies=[Depends(lambda request: set_api_version(request, "v1"))],
+    dependencies=[Depends(set_v1_api_version)],
     tags=["v1"]
 )
 
