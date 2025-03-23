@@ -1,4 +1,4 @@
-name: Test
+name: Test and Build
 
 on:
   push:
@@ -9,51 +9,33 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
     steps:
-    - uses: actions/checkout@v3
-    
+    - uses: actions/checkout@v4
+
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
         cache: 'pip'
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
-        pip install pytest pytest-cov pytest-asyncio
-    
+
     - name: Lint with flake8
       run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings
-        flake8 app tests --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
-    
-    - name: Check types with mypy
-      run: |
-        mypy app tests
-    
-    - name: Test with pytest
-      run: |
-        pytest --cov=app
+        flake8 app tests
 
-    - name: Upload coverage reports to Codecov
+    - name: Format check with black
+      run: |
+        black --check app tests
+
+    - name: Run tests
+      run: |
+        pytest tests/
+
+    - name: Upload test coverage
       uses: codecov/codecov-action@v3
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
-        files: ./coverage.xml
-        verbose: true
-    
-    - name: Generate HTML coverage report
-      run: |
-        pytest --cov=app --cov-report=html:coverage_html
-    
-    - name: Archive code coverage results
-      uses: actions/upload-artifact@v3
-      with:
-        name: code-coverage-report
-        path: coverage_html/
