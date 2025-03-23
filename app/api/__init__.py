@@ -9,7 +9,7 @@ from fastapi import APIRouter
 router = APIRouter()
 
 # Import the endpoints to register them with the router
-from app.api.endpoints import router as endpoints_router
+from app.api.v1.endpoints import router as endpoints_router
 
 # Include the endpoints router in the main router
 router.include_router(endpoints_router)

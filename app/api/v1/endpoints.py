@@ -1,3 +1,9 @@
+"""
+API endpoints for version 1 of the Instagram Carousel Generator.
+
+This module defines the v1 endpoints for carousel generation and management.
+"""
+
 from fastapi import APIRouter, HTTPException, Request, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
 import uuid
@@ -5,83 +11,25 @@ import os
 import logging
 import time
 from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field
 import traceback
 from pathlib import Path
 
-# Import the new image service module
+# Import the service and model dependencies
 from app.services.image_service import get_image_service, ImageServiceType
 from app.services import storage_service
 from app.core.config import settings
 from app.api.security import validate_file_access, rate_limit
+from app.api.v1.models import (
+    SlideContent,
+    CarouselRequest,
+    CarouselResponse,
+    CarouselResponseWithUrls,
+)
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
-
-# Define models
-class SlideContent(BaseModel):
-    """Content for a single carousel slide"""
-    text: str = Field(..., description="Text content for the slide")
-
-
-class CarouselRequest(BaseModel):
-    """Request model for carousel generation"""
-    carousel_title: str = Field(..., description="Title for the carousel")
-    slides: List[SlideContent] = Field(...,
-                                       description="List of slide contents")
-    include_logo: bool = Field(False, description="Whether to include a logo")
-    logo_path: Optional[str] = Field(None, description="Path to logo file")
-    settings: Optional[Dict[str, Any]] = Field(None,
-                                               description="Optional settings for image generation")
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "carousel_title": "5 Productivity Tips",
-                "slides": [
-                    {"text": "Wake up early and plan your day"},
-                    {"text": "Use the Pomodoro technique for focus"},
-                    {"text": "Take regular breaks to recharge"}
-                ],
-                "include_logo": True,
-                "logo_path": "static/assets/logo.png",
-                "settings": {
-                    "width": 1080,
-                    "height": 1080,
-                    "bg_color": [18, 18, 18]
-                }
-            }
-        }
-
-
-class SlideResponse(BaseModel):
-    """Response model for a generated slide"""
-    filename: str = Field(..., description="Filename of the generated image")
-    content: str = Field(..., description="Hex-encoded image content")
-
-
-class CarouselResponse(BaseModel):
-    """Response model for carousel generation"""
-    status: str = Field(..., description="Status of the operation")
-    carousel_id: str = Field(...,
-                             description="Unique identifier for the carousel")
-    slides: List[SlideResponse] = Field(...,
-                                        description="Generated slide images")
-    processing_time: Optional[float] = Field(None,
-                                             description="Processing time in seconds")
-    warnings: List[str] = Field([],
-                                description="Any warnings during processing")
-
-
-# Add the following new models after your existing models
-class CarouselResponseWithUrls(CarouselResponse):
-    """Response model for carousel generation with public URLs"""
-    public_urls: List[str] = Field([],
-                                   description="Publicly accessible URLs for the slide images")
-
-
-# Create a router for the carousel endpoints
+# Create a router for the v1 endpoints
 router = APIRouter()
 
 
@@ -91,7 +39,8 @@ async def log_request_info(request: Request):
     start_time = time.time()
     client_host = request.client.host if request.client else "unknown"
     logger.info(
-        f"Request from {client_host} - {request.method} {request.url.path}")
+        f"Request from {client_host} - {request.method} {request.url.path}"
+    )
     return start_time
 
 
@@ -146,9 +95,11 @@ async def generate_carousel(
         for i, slide in enumerate(request.slides):
             if any(ord(c) > 127 for c in slide.text):
                 warnings.append(
-                    f"Slide {i + 1} contains non-ASCII characters which may not render correctly")
+                    f"Slide {i + 1} contains non-ASCII characters which may not render correctly"
+                )
                 logger.warning(
-                    f"Non-ASCII characters detected in slide {i + 1}")
+                    f"Non-ASCII characters detected in slide {i + 1}"
+                )
 
         # Default settings if none provided
         service_settings = request.settings or {
@@ -213,7 +164,8 @@ async def generate_carousel_with_urls(
         # Create a unique ID for this carousel
         carousel_id = str(uuid.uuid4())[:8]
         logger.info(
-            f"Starting carousel generation with URLs for ID: {carousel_id}")
+            f"Starting carousel generation with URLs for ID: {carousel_id}"
+        )
 
         # Generate carousel images
         result = image_service.create_carousel_images(
@@ -278,7 +230,8 @@ async def get_temp_file(carousel_id: str, filename: str):
         logger.error(f"File not found: {file_path}")
         if file_path and file_path.parent.exists():
             logger.info(
-                f"Parent directory contents: {list(file_path.parent.iterdir())}")
+                f"Parent directory contents: {list(file_path.parent.iterdir())}"
+            )
         raise HTTPException(status_code=404, detail="File not found")
 
     # Determine content type

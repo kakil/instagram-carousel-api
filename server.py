@@ -12,7 +12,7 @@ except Exception as e:
 
 # Add this to the imports section in server.py
 try:
-    from app.api.endpoints import router as api_router
+    from app.api.v1.endpoints import router as api_router
     router_import_success = True
 except Exception as e:
     router_import_success = False

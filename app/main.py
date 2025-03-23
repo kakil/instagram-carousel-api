@@ -63,7 +63,17 @@ def create_app() -> FastAPI:
     # Create the FastAPI app with proper configuration
     app = FastAPI(
         title=settings.PROJECT_NAME,
-        description="API for generating Instagram carousel images with consistent styling",
+        description="""
+        API for generating Instagram carousel images with consistent styling.
+        
+        ## API Versioning
+        
+        This API uses URL-based versioning (e.g., `/api/v1/...`). 
+        Always include the version in your API requests to ensure compatibility.
+        
+        - Current version: v1
+        - For more information about versioning, see the `/api-info` endpoint or visit our [API Versioning Guide](/docs#section/Versioning).
+        """,
         version="1.0.0",
         lifespan=lifespan,
     )
@@ -81,6 +91,14 @@ def create_app() -> FastAPI:
         allow_methods=settings.ALLOW_METHODS,
         allow_headers=settings.ALLOW_HEADERS,
     )
+
+    # Add the API version middleware
+    from app.api.middleware import version_middleware
+
+    @app.middleware("http")
+    async def api_version_middleware(request: Request, call_next):
+        """Middleware for managing API versioning notices"""
+        return await version_middleware(request, call_next)
 
     # Middleware to ensure UTF-8 encoding for all responses
     @app.middleware("http")
@@ -129,6 +147,20 @@ def create_app() -> FastAPI:
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
             "version": "1.0.0",
+            "api_version": "v1",
+        }
+
+    @app.get("/api-info", tags=["versioning"])
+    async def api_info():
+        """Get API version information"""
+        from app.api.middleware import get_all_versions, get_latest_version
+
+        return {
+            "api_name": settings.PROJECT_NAME,
+            "api_version": "1.0.0",
+            "available_versions": get_all_versions(),
+            "latest_version": get_latest_version(),
+            "documentation_url": f"{settings.PUBLIC_BASE_URL}/docs",
         }
 
     # Redirect root to docs
@@ -136,15 +168,14 @@ def create_app() -> FastAPI:
     async def root():
         return RedirectResponse(url="/docs")
 
-    # Include the API router with version prefix and security dependency
-    # We import here to avoid circular imports
-    from app.api.endpoints import router as api_router
+    # Include the versioned API router
+    from app.api.router import api_router
 
     # Apply API key security to all API endpoints
     # Public endpoints like health check are defined directly in this file
     app.include_router(
         api_router,
-        prefix=settings.get_full_api_prefix(),
+        prefix=settings.API_PREFIX,  # Only use the prefix without version
         dependencies=[Depends(get_api_key), Depends(rate_limit())]
     )
 
