@@ -32,9 +32,8 @@ class CarouselRequest(BaseModel):
     logo_path: Optional[str] = Field(None, description="Path to logo file")
     settings: Optional[Dict[str, Any]] = Field(None, description="Custom settings for carousel generation")
 
-    class Config:
-        """Example configuration for API documentation."""
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "carousel_title": "5 Productivity Tips",
                 "slides": [
@@ -51,6 +50,7 @@ class CarouselRequest(BaseModel):
                 }
             }
         }
+    }
 
 
 class SlideResponse(BaseModel):

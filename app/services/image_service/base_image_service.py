@@ -230,85 +230,145 @@ class BaseImageService(ABC):
         Returns:
             List of dictionaries with image data
         """
+        # Start the timer for performance tracking
+        start_time = time.time()
+        logger.info(f"Beginning carousel generation for ID {carousel_id}")
+        logger.info(f"Title: {carousel_title}")
+        logger.info(f"Number of slides: {len(slides_data)}")
+
         # Create a temporary directory for the images
         with tempfile.TemporaryDirectory() as temp_dir:
-            image_files = []
-
-            # Start the timer for performance tracking
-            start_time = time.time()
-            logger.info(f"Beginning carousel generation for ID {carousel_id}")
-            logger.info(f"Title: {carousel_title}")
-            logger.info(f"Number of slides: {len(slides_data)}")
-
-            # Generate each slide
-            for index, slide in enumerate(slides_data):
-                try:
-                    # Get slide text
-                    slide_text = slide.get('text', '')
-                    if not isinstance(slide_text, str):
-                        slide_text = str(slide_text)
-
-                    slide_number = index + 1
-                    total_slides = len(slides_data)
-
-                    logger.info(
-                        f"Processing slide {slide_number}/{total_slides}")
-
-                    # Create image
-                    img = self.create_slide_image(
-                        carousel_title if index == 0 else None,
-                        # Only show title on first slide
-                        slide_text,
-                        slide_number,
-                        total_slides,
-                        include_logo,
-                        logo_path
-                    )
-
-                    # Save image
-                    filename = os.path.join(temp_dir,
-                                            f"slide_{slide_number}.png")
-                    img.save(filename)
-
-                    # Read file and convert to hex
-                    with open(filename, "rb") as f:
-                        file_content = f.read()
-
-                    # Add to result
-                    image_files.append({
-                        "filename": f"slide_{slide_number}.png",
-                        "content": file_content.hex()
-                        # Convert binary to hex for JSON
-                    })
-
-                    logger.info(f"Slide {slide_number} generated successfully")
-
-                except Exception as e:
-                    logger.error(
-                        f"Error processing slide {index + 1}: {str(e)}")
-
-                    # Create an error slide
-                    error_img = self.create_error_slide(index + 1,
-                                                        len(slides_data),
-                                                        str(e))
-
-                    filename = os.path.join(temp_dir,
-                                            f"slide_{index + 1}_error.png")
-                    error_img.save(filename)
-
-                    with open(filename, "rb") as f:
-                        file_content = f.read()
-
-                    image_files.append({
-                        "filename": f"slide_{index + 1}_error.png",
-                        "content": file_content.hex()
-                    })
-
-                    logger.info(f"Error slide generated for slide {index + 1}")
+            # Generate slides
+            image_files = self._generate_all_slides(
+                carousel_title,
+                slides_data,
+                carousel_id,
+                include_logo,
+                logo_path,
+                temp_dir
+            )
 
             # Log performance metrics
             generation_time = time.time() - start_time
             logger.info(
-                f"Carousel generation completed in {generation_time:.2f} seconds with {len(image_files)} slides")
+                f"Carousel generation completed in {generation_time:.2f} seconds with {len(image_files)} slides"
+            )
 
             return image_files
+
+    def _generate_all_slides(
+            self,
+            carousel_title: str,
+            slides_data: List[Dict[str, str]],
+            carousel_id: str,
+            include_logo: bool,
+            logo_path: str,
+            temp_dir: str
+    ) -> List[Dict[str, Any]]:
+        """Generate all slides for the carousel and store them in temporary directory"""
+        image_files = []
+        total_slides = len(slides_data)
+
+        # Generate each slide
+        for index, slide in enumerate(slides_data):
+            slide_number = index + 1
+            try:
+                # Process this slide
+                slide_result = self._process_single_slide(
+                    carousel_title if index == 0 else None,
+                    # Only show title on first slide
+                    slide,
+                    slide_number,
+                    total_slides,
+                    include_logo,
+                    logo_path,
+                    temp_dir
+                )
+                image_files.append(slide_result)
+                logger.info(f"Slide {slide_number} generated successfully")
+
+            except Exception as e:
+                # Handle errors per slide
+                logger.error(f"Error processing slide {slide_number}: {str(e)}")
+                error_result = self._create_error_slide_file(
+                    index + 1, total_slides, str(e), temp_dir
+                )
+                image_files.append(error_result)
+                logger.info(f"Error slide generated for slide {slide_number}")
+
+        return image_files
+
+    def _process_single_slide(
+            self,
+            title: Optional[str],
+            slide: Dict[str, str],
+            slide_number: int,
+            total_slides: int,
+            include_logo: bool,
+            logo_path: str,
+            temp_dir: str
+    ) -> Dict[str, Any]:
+        """Process and generate a single carousel slide"""
+        # Get slide text
+        slide_text = slide.get('text', '')
+        if not isinstance(slide_text, str):
+            slide_text = str(slide_text)
+
+        logger.info(f"Processing slide {slide_number}/{total_slides}")
+
+        # Create image
+        img = self.create_slide_image(
+            title,
+            slide_text,
+            slide_number,
+            total_slides,
+            include_logo,
+            logo_path
+        )
+
+        # Create result dictionary
+        return self._save_slide_to_file(img, slide_number, temp_dir)
+
+    def _create_error_slide_file(
+            self,
+            slide_number: int,
+            total_slides: int,
+            error_message: str,
+            temp_dir: str
+    ) -> Dict[str, Any]:
+        """Create an error slide and save it to file"""
+        # Create an error slide
+        error_img = self.create_error_slide(
+            slide_number, total_slides, error_message
+        )
+
+        # Save as error slide
+        return self._save_slide_to_file(
+            error_img, slide_number, temp_dir, is_error=True
+        )
+
+    def _save_slide_to_file(
+            self,
+            img: Image.Image,
+            slide_number: int,
+            temp_dir: str,
+            is_error: bool = False
+    ) -> Dict[str, Any]:
+        """Save a slide image to file and return the metadata"""
+        # Determine filename
+        filename_suffix = "_error" if is_error else ""
+        filename = f"slide_{slide_number}{filename_suffix}.png"
+
+        # Save image
+        filepath = os.path.join(temp_dir, filename)
+        img.save(filepath)
+
+        # Read file and convert to hex
+        with open(filepath, "rb") as f:
+            file_content = f.read()
+
+        # Return metadata
+        return {
+            "filename": filename,
+            "content": file_content.hex()  # Convert binary to hex for JSON
+        }

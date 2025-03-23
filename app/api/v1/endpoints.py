@@ -10,7 +10,7 @@ import uuid
 import os
 import logging
 import time
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 import traceback
 from pathlib import Path
 
@@ -19,7 +19,7 @@ from app.services.image_service import get_image_service, ImageServiceType
 from app.services import storage_service
 from app.core.config import settings
 from app.api.security import validate_file_access, rate_limit
-from app.api.v1.models import (
+from app.core.models import (
     SlideContent,
     CarouselRequest,
     CarouselResponse,
@@ -161,45 +161,21 @@ async def generate_carousel_with_urls(
 ):
     """Generate carousel images and return URLs for temporary access"""
     try:
-        # Create a unique ID for this carousel
-        carousel_id = str(uuid.uuid4())[:8]
-        logger.info(
-            f"Starting carousel generation with URLs for ID: {carousel_id}"
+        # Log request
+        start_time = await log_request_info(req)
+
+        # Generate the carousel
+        carousel_id, result = await _generate_carousel_content(
+            request, image_service
         )
 
-        # Generate carousel images
-        result = image_service.create_carousel_images(
-            request.carousel_title,
-            [{"text": slide.text} for slide in request.slides],
-            carousel_id,
-            request.include_logo,
-            request.logo_path
+        # Process the results
+        public_urls = await _save_and_prepare_urls(
+            carousel_id, result, background_tasks
         )
 
-        # Determine base URL for public access - use configuration
-        base_url = settings.PUBLIC_BASE_URL
-
-        # Save images and get public URLs
-        public_urls = storage_service.save_carousel_images(
-            carousel_id,
-            result,
-            base_url
-        )
-
-        # Schedule cleanup of these files after configured lifetime
-        carousel_dir = storage_service.temp_dir / carousel_id
-        storage_service.schedule_cleanup(
-            background_tasks,
-            carousel_dir,
-            hours=settings.TEMP_FILE_LIFETIME_HOURS
-        )
-
-        return {
-            "status": "success",
-            "carousel_id": carousel_id,
-            "slides": result,
-            "public_urls": public_urls
-        }
+        # Prepare and return the response
+        return _prepare_carousel_response(carousel_id, result, public_urls)
 
     except Exception as e:
         logger.error(f"Error generating carousel with URLs: {str(e)}")
@@ -207,6 +183,68 @@ async def generate_carousel_with_urls(
             status_code=500,
             detail=f"Error generating carousel: {str(e)}"
         )
+
+
+async def _generate_carousel_content(
+        request: CarouselRequest,
+        image_service
+) -> Tuple[str, List[Dict[str, Any]]]:
+    """Generate carousel images based on request data"""
+    # Create a unique ID for this carousel
+    carousel_id = str(uuid.uuid4())[:8]
+    logger.info(f"Starting carousel generation with URLs for ID: {carousel_id}")
+
+    # Generate carousel images
+    result = image_service.create_carousel_images(
+        request.carousel_title,
+        [{"text": slide.text} for slide in request.slides],
+        carousel_id,
+        request.include_logo,
+        request.logo_path
+    )
+
+    return carousel_id, result
+
+
+async def _save_and_prepare_urls(
+        carousel_id: str,
+        result: List[Dict[str, Any]],
+        background_tasks: BackgroundTasks
+) -> List[str]:
+    """Save images and prepare public URLs for access"""
+    # Determine base URL for public access - use configuration
+    base_url = settings.PUBLIC_BASE_URL
+
+    # Save images and get public URLs
+    public_urls = storage_service.save_carousel_images(
+        carousel_id,
+        result,
+        base_url
+    )
+
+    # Schedule cleanup of these files after configured lifetime
+    carousel_dir = storage_service.temp_dir / carousel_id
+    storage_service.schedule_cleanup(
+        background_tasks,
+        carousel_dir,
+        hours=settings.TEMP_FILE_LIFETIME_HOURS
+    )
+
+    return public_urls
+
+
+def _prepare_carousel_response(
+        carousel_id: str,
+        result: List[Dict[str, Any]],
+        public_urls: List[str]
+) -> Dict[str, Any]:
+    """Prepare the response data structure"""
+    return {
+        "status": "success",
+        "carousel_id": carousel_id,
+        "slides": result,
+        "public_urls": public_urls
+    }
 
 
 @router.get("/temp/{carousel_id}/{filename}", tags=["files"])

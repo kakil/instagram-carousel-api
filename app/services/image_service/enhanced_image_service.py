@@ -35,7 +35,15 @@ class EnhancedImageService(BaseImageService):
         if not isinstance(text, str):
             text = str(text)
 
-        # Replace specific problematic characters that might cause rendering issues
+        # Apply text transformations in sequence
+        text = self._replace_special_characters(text)
+        text = self._normalize_unicode(text)
+        text = self._handle_non_ascii_chars(text)
+
+        return text
+
+    def _replace_special_characters(self, text: str) -> str:
+        """Replace specific problematic characters with safer alternatives"""
         replacements = {
             '\u2192': '->',  # Right arrow
             '\u2190': '<-',  # Left arrow
@@ -54,11 +62,14 @@ class EnhancedImageService(BaseImageService):
         for char, replacement in replacements.items():
             text = text.replace(char, replacement)
 
-        # First, try NFC normalization (canonical composition)
-        text = unicodedata.normalize('NFC', text)
+        return text
 
-        # Then do a safer approach that attempts to preserve as much as possible
-        # while removing characters that can't be rendered
+    def _normalize_unicode(self, text: str) -> str:
+        """Normalize Unicode to canonical composition form"""
+        return unicodedata.normalize('NFC', text)
+
+    def _handle_non_ascii_chars(self, text: str) -> str:
+        """Process non-ASCII characters with careful handling"""
         result = []
         for char in text:
             # Check if character is renderable or convert to a safe replacement
@@ -111,80 +122,139 @@ class EnhancedImageService(BaseImageService):
         text = self.enhanced_sanitize_text(text)
 
         if not text:
-            # Return empty transparent image if text is empty
-            empty_img = Image.new("RGBA", (1, 1), color=(0, 0, 0, 0))
-            return empty_img, position
+            return self._create_empty_transparent_image(position)
 
-        if colors is None:
-            # Default blue to white gradient instead of black to white
-            colors = [(40, 100, 255), (255, 255, 255)]
+        # Set default colors if not provided
+        colors = colors or [(40, 100, 255),
+                            (255, 255, 255)]  # Default blue to white gradient
 
         try:
-            # Get text size
-            text_bbox = draw.textbbox((0, 0), text, font=font)
-            text_width = text_bbox[2] - text_bbox[0]
-            text_height = text_bbox[3] - text_bbox[1]
+            # Get text dimensions and create gradient text
+            text_width, text_height = self._get_text_dimensions(draw, text,
+                                                                font)
 
-            if text_width <= 0 or text_height <= 0:
-                # Handle zero dimension cases
-                text_width = max(text_width, 10)
-                text_height = max(text_height, 10)
+            # Create the gradient text image
+            gradient_text = self._create_gradient_text_image(text, font,
+                                                             text_width,
+                                                             text_height,
+                                                             colors)
 
-            # Create a gradient mask
-            gradient = Image.new("L", (text_width, text_height), color=0)
-            gradient_draw = ImageDraw.Draw(gradient)
+            # Calculate centered position
+            centered_position = self._calculate_centered_position(position,
+                                                                  text_width,
+                                                                  text_height)
 
-            # Create gradient by drawing lines with increasing brightness
-            for i in range(text_width):
-                color_idx = i / text_width if text_width > 0 else 0
-                r = int(
-                    colors[0][0] + color_idx * (colors[1][0] - colors[0][0]))
-                g = int(
-                    colors[0][1] + color_idx * (colors[1][1] - colors[0][1]))
-                b = int(
-                    colors[0][2] + color_idx * (colors[1][2] - colors[0][2]))
-                brightness = int((r + g + b) / 3)
-                gradient_draw.line([(i, 0), (i, text_height)], fill=brightness)
-
-            # Create a transparent image for the text
-            text_img = Image.new("RGBA", (text_width, text_height),
-                                 color=(0, 0, 0, 0))
-            text_draw = ImageDraw.Draw(text_img)
-
-            # Draw the text in white
-            text_draw.text((0, 0), text, font=font, fill="white")
-
-            # Apply the gradient mask to the text
-            text_img.putalpha(gradient)
-
-            # Calculate position to center the text
-            x, y = position
-            x = x - text_width // 2
-            y = y - text_height // 2
-
-            return text_img, (x, y)
+            return gradient_text, centered_position
 
         except Exception as e:
-            logger.error(f"Error in create_gradient_text: {e}")
-            logger.error(traceback.format_exc())
+            # Create fallback text if gradient fails
+            return self._create_fallback_text(text, font, width, position)
 
-            # Create a simple fallback text image
-            fallback_img = Image.new("RGBA", (width, 100), color=(0, 0, 0, 0))
-            fallback_draw = ImageDraw.Draw(fallback_img)
+    def _create_empty_transparent_image(self, position: Tuple[int, int]) -> \
+    Tuple[Image.Image, Tuple[int, int]]:
+        """Create an empty transparent image for empty text"""
+        empty_img = Image.new("RGBA", (1, 1), color=(0, 0, 0, 0))
+        return empty_img, position
 
-            try:
-                # Try to render simplified text
-                simple_text = ''.join(c for c in text if
-                                      c.isalnum() or c.isspace() or c in '.,!?-:;')
-                fallback_draw.text((width // 2, 50),
-                                   simple_text or "[Text Rendering Error]",
-                                   font=font, fill="white", anchor="mm")
-            except:
-                # Ultimate fallback
-                fallback_draw.text((width // 2, 50), "[Text Rendering Error]",
-                                   font=font, fill="white", anchor="mm")
+    def _get_text_dimensions(self, draw: ImageDraw.Draw, text: str, font) -> \
+    Tuple[int, int]:
+        """Get the dimensions of the text with the given font"""
+        text_bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
 
-            return fallback_img, (0, position[1] - 50)
+        # Handle zero dimension cases
+        if text_width <= 0 or text_height <= 0:
+            text_width = max(text_width, 10)
+            text_height = max(text_height, 10)
+
+        return text_width, text_height
+
+    def _create_gradient_text_image(
+            self,
+            text: str,
+            font,
+            text_width: int,
+            text_height: int,
+            colors: List[Tuple[int, int, int]]
+    ) -> Image.Image:
+        """Create a gradient text image with the given colors"""
+        # Create a gradient mask
+        gradient = self._create_gradient_mask(text_width, text_height, colors)
+
+        # Create a transparent image for the text
+        text_img = Image.new("RGBA", (text_width, text_height),
+                             color=(0, 0, 0, 0))
+        text_draw = ImageDraw.Draw(text_img)
+
+        # Draw the text in white
+        text_draw.text((0, 0), text, font=font, fill="white")
+
+        # Apply the gradient mask to the text
+        text_img.putalpha(gradient)
+
+        return text_img
+
+    def _create_gradient_mask(
+            self,
+            width: int,
+            height: int,
+            colors: List[Tuple[int, int, int]]
+    ) -> Image.Image:
+        """Create a gradient mask for text from left to right"""
+        gradient = Image.new("L", (width, height), color=0)
+        gradient_draw = ImageDraw.Draw(gradient)
+
+        # Create gradient by drawing lines with increasing brightness
+        for i in range(width):
+            color_idx = i / width if width > 0 else 0
+            r = int(colors[0][0] + color_idx * (colors[1][0] - colors[0][0]))
+            g = int(colors[0][1] + color_idx * (colors[1][1] - colors[0][1]))
+            b = int(colors[0][2] + color_idx * (colors[1][2] - colors[0][2]))
+            brightness = int((r + g + b) / 3)
+            gradient_draw.line([(i, 0), (i, height)], fill=brightness)
+
+        return gradient
+
+    def _calculate_centered_position(
+            self,
+            position: Tuple[int, int],
+            text_width: int,
+            text_height: int
+    ) -> Tuple[int, int]:
+        """Calculate the position to center the text"""
+        x, y = position
+        x = x - text_width // 2
+        y = y - text_height // 2
+        return x, y
+
+    def _create_fallback_text(
+            self,
+            text: str,
+            font,
+            width: int,
+            position: Tuple[int, int]
+    ) -> Tuple[Image.Image, Tuple[int, int]]:
+        """Create fallback text when gradient rendering fails"""
+        logger.error(f"Error in create_gradient_text")
+
+        # Create a simple fallback text image
+        fallback_img = Image.new("RGBA", (width, 100), color=(0, 0, 0, 0))
+        fallback_draw = ImageDraw.Draw(fallback_img)
+
+        try:
+            # Try to render simplified text
+            simple_text = ''.join(c for c in text if
+                                  c.isalnum() or c.isspace() or c in '.,!?-:;')
+            fallback_draw.text((width // 2, 50),
+                               simple_text or "[Text Rendering Error]",
+                               font=font, fill="white", anchor="mm")
+        except Exception:
+            # Ultimate fallback
+            fallback_draw.text((width // 2, 50), "[Text Rendering Error]",
+                               font=font, fill="white", anchor="mm")
+
+        return fallback_img, (0, position[1] - 50)
 
     def create_error_slide(
             self,
@@ -199,62 +269,118 @@ class EnhancedImageService(BaseImageService):
             slide_number: Current slide number
             total_slides: Total number of slides
             error_message: Error message to display
-            width: Image width
-            height: Image height
 
         Returns:
             PIL Image object
         """
+        # Extract the error slide creation into smaller focused methods
         width, height = self.default_width, self.default_height
 
-        # Create dark gray background
+        # Create the base slide with background
+        img, draw = self._create_error_slide_base(width, height)
+
+        # Load necessary fonts
+        fonts = self._load_error_slide_fonts()
+
+        # Add the error content to the slide
+        self._add_error_title(draw, width, height, fonts['title'])
+
+        # Add simplified error message
+        simple_error = self._get_simplified_error_message(error_message)
+        self._add_simple_error_message(draw, width, height, simple_error,
+                                       fonts['body'])
+
+        # Add detailed error message
+        self._add_detailed_error_info(draw, width, height, error_message,
+                                      fonts['small'])
+
+        # Add help instruction
+        self._add_error_instruction(draw, width, height, fonts['body'])
+
+        # Add slide counter
+        self._add_slide_counter(draw, slide_number, total_slides,
+                                fonts['small'], width, height)
+
+        # Add decorative elements
+        self._add_decorative_elements(draw, width, height)
+
+        return img
+
+    def _create_error_slide_base(self, width: int, height: int) -> Tuple[
+        Image.Image, ImageDraw.Draw]:
+        """Create the base slide with background color"""
         img = Image.new("RGB", (width, height), (40, 40, 40))
         draw = ImageDraw.Draw(img)
+        return img, draw
 
-        # Try to load fonts with fallbacks
-        title_font = self.safe_load_font(
-            self.settings.get('title_font', 'Arial Bold.ttf'), 48, 32)
-        body_font = self.safe_load_font(
-            self.settings.get('text_font', 'Arial.ttf'), 32, 24)
-        small_font = self.safe_load_font(
-            self.settings.get('nav_font', 'Arial.ttf'), 24, 18)
+    def _load_error_slide_fonts(self) -> Dict[str, ImageFont.FreeTypeFont]:
+        """Load fonts for the error slide with fallbacks"""
+        return {
+            'title': self.safe_load_font(
+                self.settings.get('title_font', 'Arial Bold.ttf'), 48, 32),
+            'body': self.safe_load_font(
+                self.settings.get('text_font', 'Arial.ttf'), 32, 24),
+            'small': self.safe_load_font(
+                self.settings.get('nav_font', 'Arial.ttf'), 24, 18)
+        }
 
-        # Error title
+    def _add_error_title(self, draw: ImageDraw.Draw, width: int, height: int,
+                         font: ImageFont.FreeTypeFont):
+        """Add error title to the slide"""
         title = "Error Creating Slide"
         text_position = (width // 2, height // 2 - 150)
         draw.text(text_position, title, fill=(255, 100, 100), anchor="mm",
-                  font=title_font)
+                  font=font)
 
-        # Simplified error message
-        simple_error = "Error processing text"
+    def _get_simplified_error_message(self, error_message: str) -> str:
+        """Get a simplified, user-friendly version of the error message"""
         if "codec can't encode character" in error_message:
-            simple_error = "Unicode character issue"
+            return "Unicode character issue"
         elif "cannot find font" in error_message.lower():
-            simple_error = "Font loading error"
+            return "Font loading error"
         elif "memory" in error_message.lower():
-            simple_error = "Memory allocation error"
+            return "Memory allocation error"
+        return "Error processing text"
 
-        # Add technical information in smaller text
+    def _add_simple_error_message(self, draw: ImageDraw.Draw, width: int,
+                                  height: int,
+                                  simple_error: str,
+                                  font: ImageFont.FreeTypeFont):
+        """Add simplified error message to the slide"""
         text_position = (width // 2, height // 2 - 70)
         draw.text(text_position, simple_error, fill=(240, 240, 240),
-                  anchor="mm", font=body_font)
+                  anchor="mm", font=font)
 
-        # Add more detailed error info
+    def _add_detailed_error_info(self, draw: ImageDraw.Draw, width: int,
+                                 height: int,
+                                 error_message: str,
+                                 font: ImageFont.FreeTypeFont):
+        """Add detailed error information to the slide"""
+        # Truncate error message if too long
         error_detail = error_message
         if len(error_detail) > 100:
             error_detail = error_detail[:97] + "..."
 
-        text_position = (width // 2, height // 2)
+        # Wrap the error message text
+        lines = self._wrap_error_text(error_detail)
 
-        # Split long error message into multiple lines
-        words = error_detail.split()
+        # Draw the wrapped text
+        y_position = height // 2 + 20
+        for line in lines:
+            draw.text((width // 2, y_position), line, fill=(200, 200, 200),
+                      anchor="mm", font=font)
+            y_position += 30
+
+    def _wrap_error_text(self, text: str) -> List[str]:
+        """Wrap error text into multiple lines based on simple character count"""
+        words = text.split()
         lines = []
         current_line = []
 
         for word in words:
             test_line = " ".join(current_line + [word])
-            # Check if adding this word exceeds the width
-            if len(test_line) < 50:  # Simple character count for line length
+            # Simple character count for line length
+            if len(test_line) < 50:
                 current_line.append(word)
             else:
                 lines.append(" ".join(current_line))
@@ -263,33 +389,30 @@ class EnhancedImageService(BaseImageService):
         if current_line:
             lines.append(" ".join(current_line))
 
-        # Draw each line of text
-        y_position = height // 2 + 20
-        for line in lines:
-            draw.text((width // 2, y_position), line, fill=(200, 200, 200),
-                      anchor="mm", font=small_font)
-            y_position += 30
+        return lines
 
-        # Add instruction
+    def _add_error_instruction(self, draw: ImageDraw.Draw, width: int,
+                               height: int,
+                               font: ImageFont.FreeTypeFont):
+        """Add helpful instruction to the error slide"""
         instruction = "Please check your text input for special characters"
         draw.text((width // 2, height // 2 + 150), instruction,
-                  fill=(180, 180, 255), anchor="mm", font=body_font)
+                  fill=(180, 180, 255), anchor="mm", font=font)
 
-        # Add slide counter
-        counter_text = f"{slide_number}/{total_slides}"
-        counter_position = (width // 2, height - 50)
-        draw.text(counter_position, counter_text, fill="white", anchor="mm",
-                  font=small_font)
-
-        # Add decorative elements
-        draw.rectangle([(width // 2 - 150, height // 2 - 180),
-                        (width // 2 + 150, height // 2 - 180 + 4)],
-                       fill=(255, 100, 100))
-        draw.rectangle([(width // 2 - 100, height // 2 + 180),
-                        (width // 2 + 100, height // 2 + 180 + 4)],
-                       fill=(180, 180, 255))
-
-        return img
+    def _add_decorative_elements(self, draw: ImageDraw.Draw, width: int,
+                                 height: int):
+        """Add decorative elements to the error slide"""
+        # FIX: Use proper tuples instead of lists of tuples
+        draw.rectangle(
+            (width // 2 - 150, height // 2 - 180, width // 2 + 150,
+             height // 2 - 180 + 4),
+            fill=(255, 100, 100)
+        )
+        draw.rectangle(
+            (width // 2 - 100, height // 2 + 180, width // 2 + 100,
+             height // 2 + 180 + 4),
+            fill=(180, 180, 255)
+        )
 
     def create_slide_image(
             self,
@@ -335,81 +458,107 @@ class EnhancedImageService(BaseImageService):
         sanitized_title = self.enhanced_sanitize_text(title) if title else None
         sanitized_text = self.enhanced_sanitize_text(text)
 
-        # Add title with gradient effect (only on first slide)
+        # Add each component to the image
         if sanitized_title:
-            try:
-                # Create gradient text from blue to white for better visibility
-                gradient_text, pos = self.create_gradient_text(
-                    draw,
-                    sanitized_title,
-                    (width // 2, 150),
-                    title_font,
-                    width,
-                    [(40, 100, 255), (255, 255, 255)]  # Blue to white gradient
-                )
-                image.paste(gradient_text, pos, gradient_text)
-            except Exception as e:
-                logger.error(f"Error creating gradient title: {e}")
-                logger.error(traceback.format_exc())
-                # Fallback to plain text title
-                try:
-                    text_bbox = draw.textbbox((0, 0), sanitized_title,
-                                              font=title_font)
-                    title_width = text_bbox[2] - text_bbox[0]
-                    draw.text((width // 2 - title_width // 2, 150),
-                              sanitized_title, fill="white", font=title_font)
-                except:
-                    # Ultimate fallback for title
-                    draw.text((width // 2, 150), "[Title Error]", fill="white",
-                              font=title_font, anchor="mm")
+            self._add_title_to_slide(image, draw, sanitized_title, title_font,
+                                     width)
 
-        # Add main text with improved handling of long text
         if sanitized_text:
-            # Split text into multiple lines for better layout
-            words = sanitized_text.split()
-            lines = []
-            current_line = []
+            self._add_text_to_slide(image, draw, sanitized_text, text_font,
+                                    width, height)
 
-            for word in words:
-                test_line = " ".join(current_line + [word])
-                text_bbox = draw.textbbox((0, 0), test_line, font=text_font)
-                test_width = text_bbox[2] - text_bbox[0]
+        self._add_navigation_to_slide(draw, slide_number, total_slides,
+                                      navigation_font, width, height)
 
-                # Check if adding this word exceeds the width
-                if test_width < width - 200:
-                    current_line.append(word)
-                else:
-                    lines.append(" ".join(current_line))
-                    current_line = [word]
+        if include_logo and logo_path:
+            self._add_logo_to_slide(image, logo_path, width, height,
+                                    navigation_font)
 
-            if current_line:
+        return image
+
+    def _add_title_to_slide(self, image, draw, title, title_font, width):
+        """Add the title with gradient effect to the slide"""
+        try:
+            # Create gradient text from blue to white for better visibility
+            gradient_text, pos = self.create_gradient_text(
+                draw,
+                title,
+                (width // 2, 150),
+                title_font,
+                width,
+                [(40, 100, 255), (255, 255, 255)]  # Blue to white gradient
+            )
+            image.paste(gradient_text, pos, gradient_text)
+        except Exception as e:
+            logger.error(f"Error creating gradient title: {e}")
+            logger.error(traceback.format_exc())
+            # Fallback to plain text title
+            try:
+                text_bbox = draw.textbbox((0, 0), title, font=title_font)
+                title_width = text_bbox[2] - text_bbox[0]
+                draw.text((width // 2 - title_width // 2, 150),
+                          title, fill="white", font=title_font)
+            except:
+                # Ultimate fallback for title
+                draw.text((width // 2, 150), "[Title Error]", fill="white",
+                          font=title_font, anchor="mm")
+
+    def _add_text_to_slide(self, image, draw, text, text_font, width, height):
+        """Add the main text to the slide with proper text wrapping"""
+        # Split text into multiple lines for better layout
+        lines = self._wrap_text(draw, text, text_font, width - 200)
+
+        if not lines:
+            lines = ["[Text rendering error]"]
+
+        # Calculate start y position to center the text block
+        line_height = 60
+        total_text_height = len(lines) * line_height
+        y_position = height / 2 - total_text_height / 2
+
+        # Draw each line of text
+        for line in lines:
+            try:
+                text_bbox = draw.textbbox((0, 0), line, font=text_font)
+                text_width = text_bbox[2] - text_bbox[0]
+                x_position = width / 2 - text_width / 2
+                draw.text((x_position, y_position), line, fill="white",
+                          font=text_font)
+            except Exception as e:
+                logger.error(f"Error rendering text line: {e}")
+                # Fallback using anchor
+                draw.text((width / 2, y_position), line, fill="white",
+                          font=text_font, anchor="mt")
+
+            y_position += line_height
+
+    def _wrap_text(self, draw, text, font, max_width):
+        """Wrap text to fit within the specified width"""
+        words = text.split()
+        lines = []
+        current_line = []
+
+        for word in words:
+            test_line = " ".join(current_line + [word])
+            text_bbox = draw.textbbox((0, 0), test_line, font=font)
+            test_width = text_bbox[2] - text_bbox[0]
+
+            # Check if adding this word exceeds the width
+            if test_width < max_width:
+                current_line.append(word)
+            else:
                 lines.append(" ".join(current_line))
+                current_line = [word]
 
-            # Calculate start y position to center the text block
-            if not lines:
-                lines = ["[Text rendering error]"]
+        if current_line:
+            lines.append(" ".join(current_line))
 
-            line_height = 60
-            total_text_height = len(lines) * line_height
-            y_position = height / 2 - total_text_height / 2
+        return lines
 
-            # Draw each line of text
-            for line in lines:
-                try:
-                    text_bbox = draw.textbbox((0, 0), line, font=text_font)
-                    text_width = text_bbox[2] - text_bbox[0]
-                    x_position = width / 2 - text_width / 2
-                    draw.text((x_position, y_position), line, fill="white",
-                              font=text_font)
-                except Exception as e:
-                    logger.error(f"Error rendering text line: {e}")
-                    # Fallback using anchor
-                    draw.text((width / 2, y_position), line, fill="white",
-                              font=text_font, anchor="mt")
-
-                y_position += line_height
-
-        # Add navigation arrows and slide counter with better positioning
+    def _add_navigation_to_slide(self, draw, slide_number, total_slides,
+                                 navigation_font, width, height):
+        """Add navigation arrows and slide counter to the slide"""
+        # Add navigation arrows
         if slide_number > 1:
             try:
                 draw.text((40, height / 2), "←", fill="white",
@@ -431,6 +580,12 @@ class EnhancedImageService(BaseImageService):
                           font=navigation_font)
 
         # Add slide counter with error handling
+        self._add_slide_counter(draw, slide_number, total_slides,
+                                navigation_font, width, height)
+
+    def _add_slide_counter(self, draw, slide_number, total_slides,
+                           navigation_font, width, height):
+        """Add the slide counter to the slide"""
         counter_text = f"{slide_number}/{total_slides}"
         try:
             text_bbox = draw.textbbox((0, 0), counter_text,
@@ -444,9 +599,11 @@ class EnhancedImageService(BaseImageService):
             draw.text((width / 2, height - 60), counter_text, fill="white",
                       font=navigation_font, anchor="mm")
 
-        # Add logo if requested
-        if include_logo and logo_path and os.path.exists(logo_path):
-            try:
+    def _add_logo_to_slide(self, image, logo_path, width, height,
+                           navigation_font):
+        """Add logo to the slide if requested"""
+        try:
+            if os.path.exists(logo_path):
                 logo = Image.open(logo_path).convert("RGBA")
                 # Resize logo to be 10% of the image width
                 logo_size = int(width * 0.1)
@@ -463,10 +620,11 @@ class EnhancedImageService(BaseImageService):
 
                 # Paste the logo onto the image
                 image.paste(logo, logo_position, mask)
-            except Exception as e:
-                logger.error(f"Error adding logo: {e}")
-                # Add error text instead of logo
-                draw.text((60, height - 60), "Logo Error", fill=(255, 100, 100),
-                          font=navigation_font)
-
-        return image
+            else:
+                logger.warning(f"Logo file not found: {logo_path}")
+        except Exception as e:
+            logger.error(f"Error adding logo: {e}")
+            # Add error text instead of logo
+            draw = ImageDraw.Draw(image)
+            draw.text((60, height - 60), "Logo Error", fill=(255, 100, 100),
+                      font=navigation_font)
