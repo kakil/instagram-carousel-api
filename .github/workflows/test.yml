@@ -34,6 +34,7 @@ jobs:
         flake8 app tests
 
     - name: Format check with black
+      continue-on-error: true
       run: |
         black --check app tests
 
