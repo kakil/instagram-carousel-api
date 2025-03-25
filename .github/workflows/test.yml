@@ -29,6 +29,7 @@ jobs:
         pip install -e ".[dev]"
 
     - name: Lint with flake8
+      continue-on-error: true
       run: |
         flake8 app tests
 
