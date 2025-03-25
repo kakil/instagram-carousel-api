@@ -39,11 +39,11 @@ jobs:
         # Add server to known hosts with verbose output
         echo "Adding server to known hosts..."
         mkdir -p ~/.ssh
-        ssh-keyscan -v -H $SERVER_IP >> ~/.ssh/known_hosts
+        ssh-keyscan -v -p 2222 -H $SERVER_IP >> ~/.ssh/known_hosts
 
         # Test connection with verbose output
         echo "Testing SSH connection..."
-        ssh -v $SERVER_USER@$SERVER_IP "echo 'SSH connection successful'"
+        ssh -v -p 2222 $SERVER_USER@$SERVER_IP "echo 'SSH connection successful'"
 
     - name: Deploy to Production
       if: success()
@@ -60,11 +60,11 @@ jobs:
 
         # Upload to server with verbose output
         echo "Uploading to server..."
-        scp -v deployment.tar.gz $SERVER_USER@$SERVER_IP:/tmp/
+        scp -v -P 2222 deployment.tar.gz $SERVER_USER@$SERVER_IP:/tmp/
 
         # Deploy commands
         echo "Executing deployment commands..."
-        ssh -v $SERVER_USER@$SERVER_IP "
+        ssh -v -p 2222 $SERVER_USER@$SERVER_IP "
           echo 'Creating directories...'
           mkdir -p \$DEPLOY_PATH/new-deploy
 
@@ -94,30 +94,4 @@ jobs:
 
         # Verify deployment
         echo "Verifying deployment..."
-        ssh $SERVER_USER@$SERVER_IP "curl -s http://localhost:5001/health | grep -q 'healthy' && echo 'Health check successful' || echo 'Health check failed'"
-
-    - name: Notify on Success
-      if: success()
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: ${{ secrets.MAIL_SERVER }}
-        server_port: ${{ secrets.MAIL_PORT }}
-        username: ${{ secrets.MAIL_USERNAME }}
-        password: ${{ secrets.MAIL_PASSWORD }}
-        subject: "✅ Deployment Successful - Instagram Carousel API"
-        body: "Instagram Carousel API has been successfully deployed to production"
-        to: ${{ secrets.NOTIFICATION_EMAIL }}
-        from: GitHub Actions
-
-    - name: Notify on Failure
-      if: failure()
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: ${{ secrets.MAIL_SERVER }}
-        server_port: ${{ secrets.MAIL_PORT }}
-        username: ${{ secrets.MAIL_USERNAME }}
-        password: ${{ secrets.MAIL_PASSWORD }}
-        subject: "❌ Deployment Failed - Instagram Carousel API"
-        body: "Instagram Carousel API deployment failed. Please check GitHub Actions for details."
-        to: ${{ secrets.NOTIFICATION_EMAIL }}
-        from: GitHub Actions
+        ssh -p 2222 $SERVER_USER@$SERVER_IP "curl -s http://localhost:5001/health | grep -q 'healthy' && echo 'Health check successful' || echo 'Health check failed'"
