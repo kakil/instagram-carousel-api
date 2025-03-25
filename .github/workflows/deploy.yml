@@ -26,45 +26,51 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .  # Skip dev dependencies for deployment
 
-    - name: Set up SSH
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+    # Debug SSH configuration
+    - name: Debug SSH configuration
+      run: |
+        echo "Checking SSH configuration..."
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ls -la ~/.ssh/
+        echo "First 10 characters of SSH key to verify it's not empty:"
+        head -c 10 ~/.ssh/id_rsa | od -t x1
+        ssh-keygen -l -f ~/.ssh/id_rsa || echo "Invalid key format"
+
+        # Create SSH config with strict settings
+        echo "Host deployment-server" > ~/.ssh/config
+        echo "  HostName ${{ secrets.SERVER_IP }}" >> ~/.ssh/config
+        echo "  User ${{ secrets.SERVER_USER }}" >> ~/.ssh/config
+        echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+        echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+        echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
+        echo "  IdentitiesOnly yes" >> ~/.ssh/config
+
+        echo "SSH config created:"
+        cat ~/.ssh/config
+
+        echo "Adding server to known hosts..."
+        ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
     - name: Test SSH Connection
-      env:
-        SERVER_IP: ${{ secrets.SERVER_IP }}
-        SERVER_USER: ${{ secrets.SERVER_USER }}
       run: |
-        # Add server to known hosts with verbose output
-        echo "Adding server to known hosts..."
-        mkdir -p ~/.ssh
-        ssh-keyscan -v -H $SERVER_IP >> ~/.ssh/known_hosts
-
-        # Test connection with verbose output
         echo "Testing SSH connection..."
-        ssh -v $SERVER_USER@$SERVER_IP "echo 'SSH connection successful'"
+        ssh -v deployment-server "echo 'SSH connection successful'"
 
     - name: Deploy to Production
       if: success()
       env:
-        SERVER_IP: ${{ secrets.SERVER_IP }}
-        SERVER_USER: ${{ secrets.SERVER_USER }}
         DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
       run: |
         # Create archive of project
         git archive --format=tar HEAD | gzip > deployment.tar.gz
 
-        # Show archive size
-        echo "Archive size: $(ls -lh deployment.tar.gz | awk '{print $5}')"
-
-        # Upload to server with verbose output
-        echo "Uploading to server..."
-        scp -v deployment.tar.gz $SERVER_USER@$SERVER_IP:/tmp/
+        # Upload to server
+        scp deployment.tar.gz deployment-server:/tmp/
 
         # Deploy commands
-        echo "Executing deployment commands..."
-        ssh -v $SERVER_USER@$SERVER_IP "
+        ssh deployment-server "
           echo 'Creating directories...'
           mkdir -p \$DEPLOY_PATH/new-deploy
 
@@ -93,8 +99,13 @@ jobs:
         "
 
         # Verify deployment
-        echo "Verifying deployment..."
-        ssh $SERVER_USER@$SERVER_IP "curl -s http://localhost:5001/health | grep -q 'healthy' && echo 'Health check successful' || echo 'Health check failed'"
+        ssh deployment-server "curl -s http://localhost:5001/health | grep -q 'healthy' && echo 'Health check successful' || echo 'Health check failed'"
+
+    - name: Clean up SSH key
+      if: always()
+      run: |
+        rm -f ~/.ssh/id_rsa
+        rm -f ~/.ssh/config
 
     - name: Notify on Success
       if: success()
