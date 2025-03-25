@@ -25,6 +25,7 @@ exclude = '''
 profile = "black"
 multi_line_output = 3
 line_length = 100
+extend-ignore = "E501"
 
 [tool.mypy]
 python_version = "3.8"
