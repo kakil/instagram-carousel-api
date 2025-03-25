@@ -26,56 +26,75 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .  # Skip dev dependencies for deployment
 
-    # Removed the Run tests step since we have a separate test workflow
-
     - name: Set up SSH
       uses: webfactory/ssh-agent@v0.7.0
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+    - name: Test SSH Connection
+      env:
+        SERVER_IP: ${{ secrets.SERVER_IP }}
+        SERVER_USER: ${{ secrets.SERVER_USER }}
+      run: |
+        # Add server to known hosts with verbose output
+        echo "Adding server to known hosts..."
+        mkdir -p ~/.ssh
+        ssh-keyscan -v -H $SERVER_IP >> ~/.ssh/known_hosts
+
+        # Test connection with verbose output
+        echo "Testing SSH connection..."
+        ssh -v $SERVER_USER@$SERVER_IP "echo 'SSH connection successful'"
+
     - name: Deploy to Production
+      if: success()
       env:
         SERVER_IP: ${{ secrets.SERVER_IP }}
         SERVER_USER: ${{ secrets.SERVER_USER }}
         DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
       run: |
-        # Add server to known hosts
-        mkdir -p ~/.ssh
-        ssh-keyscan $SERVER_IP >> ~/.ssh/known_hosts
-
         # Create archive of project
         git archive --format=tar HEAD | gzip > deployment.tar.gz
 
-        # Upload to server
-        scp deployment.tar.gz $SERVER_USER@$SERVER_IP:/tmp/
+        # Show archive size
+        echo "Archive size: $(ls -lh deployment.tar.gz | awk '{print $5}')"
+
+        # Upload to server with verbose output
+        echo "Uploading to server..."
+        scp -v deployment.tar.gz $SERVER_USER@$SERVER_IP:/tmp/
 
         # Deploy commands
-        ssh $SERVER_USER@$SERVER_IP "
-          # Extract deployment
+        echo "Executing deployment commands..."
+        ssh -v $SERVER_USER@$SERVER_IP "
+          echo 'Creating directories...'
           mkdir -p \$DEPLOY_PATH/new-deploy
+
+          echo 'Extracting archive...'
           tar -xzf /tmp/deployment.tar.gz -C \$DEPLOY_PATH/new-deploy
 
-          # Install dependencies
+          echo 'Installing dependencies...'
           cd \$DEPLOY_PATH/new-deploy
           python -m venv venv
           source venv/bin/activate
           pip install -e .
 
-          # Create .env file from secrets
+          echo 'Creating .env file...'
           echo \"${{ secrets.ENV_FILE_CONTENT }}\" > .env
 
-          # Update symlink to new deployment
+          echo 'Updating symlink...'
           ln -sfn \$DEPLOY_PATH/new-deploy \$DEPLOY_PATH/current
 
-          # Restart service
+          echo 'Restarting service...'
           sudo systemctl restart instagram-carousel-api
 
-          # Clean up
+          echo 'Cleaning up...'
           rm /tmp/deployment.tar.gz
+
+          echo 'Deployment completed'
         "
 
         # Verify deployment
-        ssh $SERVER_USER@$SERVER_IP "curl -s http://localhost:5001/health | grep -q 'healthy'"
+        echo "Verifying deployment..."
+        ssh $SERVER_USER@$SERVER_IP "curl -s http://localhost:5001/health | grep -q 'healthy' && echo 'Health check successful' || echo 'Health check failed'"
 
     - name: Notify on Success
       if: success()
