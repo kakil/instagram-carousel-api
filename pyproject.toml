@@ -54,10 +54,3 @@ addopts = [
     "--no-cov-on-fail",
 ]
 asyncio_mode = "auto"
-
-[project.optional-dependencies]
-dev = [
-    "pytest",
-    "pytest-cov",
-    # other dev dependencies
-]
