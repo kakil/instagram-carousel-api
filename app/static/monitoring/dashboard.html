@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Carousel Generator - Monitoring Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            padding-top: 20px;
+        }
+        .dashboard-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            background-color: white;
+        }
+        .card-header {
+            background-color: #4a6cf7;
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            padding: 15px;
+            font-weight: 600;
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 10px 0;
+            color: #333;
+        }
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        .success-color { color: #28a745; }
+        .warning-color { color: #ffc107; }
+        .danger-color { color: #dc3545; }
+        .info-color { color: #17a2b8; }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        .refresh-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+        }
+        .endpoint-table {
+            font-size: 0.9rem;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Instagram Carousel Generator - Monitoring Dashboard</h1>
+            <button class="btn btn-primary" id="refreshBtn">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+
+        <div class="row">
+            <!-- System Health -->
+            <div class="col-md-3">
+                <div class="dashboard-card">
+                    <div class="card-header">System Health</div>
+                    <div class="card-body text-center">
+                        <div class="stat-value" id="healthStatus">-</div>
+                        <div class="stat-label">Current Status</div>
+                        <hr>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <div id="cpuUsage">-</div>
+                                <small>CPU Usage</small>
+                            </div>
+                            <div class="col-6">
+                                <div id="memoryUsage">-</div>
+                                <small>Memory Usage</small>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <div id="diskUsage">-</div>
+                                <small>Disk Usage</small>
+                            </div>
+                            <div class="col-6">
+                                <div id="uptime">-</div>
+                                <small>Uptime</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Request Stats -->
+            <div class="col-md-3">
+                <div class="dashboard-card">
+                    <div class="card-header">Request Stats</div>
+                    <div class="card-body text-center">
+                        <div class="stat-value" id="totalRequests">-</div>
+                        <div class="stat-label">Total Requests</div>
+                        <hr>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <div id="successfulRequests">-</div>
+                                <small>Successful</small>
+                            </div>
+                            <div class="col-6">
+                                <div id="errorRequests" class="danger-color">-</div>
+                                <small>Errors</small>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div id="avgResponseTime">-</div>
+                                <small>Avg Response Time</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Carousel Stats -->
+            <div class="col-md-3">
+                <div class="dashboard-card">
+                    <div class="card-header">Carousel Stats</div>
+                    <div class="card-body text-center">
+                        <div class="stat-value" id="totalCarousels">-</div>
+                        <div class="stat-label">Carousels Generated</div>
+                        <hr>
+                        <div class="row mt-2">
+                            <div class="col-12">
+                                <div id="avgGenerationTime">-</div>
+                                <small>Avg Generation Time</small>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div id="carouselCount">-</div>
+                                <small>Stored Carousels</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Health -->
+            <div class="col-md-3">
+                <div class="dashboard-card">
+                    <div class="card-header">API Health</div>
+                    <div class="card-body text-center">
+                        <div class="stat-value" id="errorRate">-</div>
+                        <div class="stat-label">Error Rate</div>
+                        <hr>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <div id="apiVersion">-</div>
+                                <small>API Version</small>
+                            </div>
+                            <div class="col-6">
+                                <div id="lastUpdateTime">-</div>
+                                <small>Last Updated</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Response Time Chart -->
+            <div class="col-md-6">
+                <div class="dashboard-card">
+                    <div class="card-header">Response Time Trends</div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="responseTimeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Request Volume Chart -->
+            <div class="col-md-6">
+                <div class="dashboard-card">
+                    <div class="card-header">Request Volume</div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="requestVolumeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Endpoint Performance Table -->
+            <div class="col-md-12">
+                <div class="dashboard-card">
+                    <div class="card-header">Endpoint Performance</div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover endpoint-table">
+                                <thead>
+                                    <tr>
+                                        <th>Endpoint</th>
+                                        <th>Requests</th>
+                                        <th>Avg Response Time</th>
+                                        <th>Error Rate</th>
+                                        <th>Min Time</th>
+                                        <th>Max Time</th>
+                                        <th>Status Codes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="endpointTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center">Loading endpoint data...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chart objects
+        let responseTimeChart = null;
+        let requestVolumeChart = null;
+
+        // Initialize charts
+        function initCharts() {
+            // Response Time Chart
+            const rtCtx = document.getElementById('responseTimeChart').getContext('2d');
+            responseTimeChart = new Chart(rtCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Avg Response Time (ms)',
+                        data: [],
+                        borderColor: '#4a6cf7',
+                        backgroundColor: 'rgba(74, 108, 247, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Response Time (ms)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Request Volume Chart
+            const rvCtx = document.getElementById('requestVolumeChart').getContext('2d');
+            requestVolumeChart = new Chart(rvCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Requests',
+                        data: [],
+                        backgroundColor: 'rgba(74, 108, 247, 0.7)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Request Count'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Endpoint'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Format number with commas
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        // Format milliseconds as readable time
+        function formatTime(ms) {
+            if (ms < 1000) {
+                return ms.toFixed(2) + ' ms';
+            } else {
+                return (ms / 1000).toFixed(2) + ' s';
+            }
+        }
+
+        // Format uptime
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+
+            let result = '';
+            if (days > 0) result += days + 'd ';
+            if (hours > 0 || days > 0) result += hours + 'h ';
+            result += minutes + 'm';
+
+            return result;
+        }
+
+        // Format timestamp as local time
+        function formatTimestamp(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString();
+        }
+
+        // Update dashboard with metrics data
+        function updateDashboard(data) {
+            // System health
+            document.getElementById('healthStatus').textContent = data.status || 'Unknown';
+            document.getElementById('healthStatus').className = data.status === 'healthy'
+                ? 'stat-value success-color' : 'stat-value danger-color';
+
+            if (data.system) {
+                document.getElementById('cpuUsage').textContent = data.system.cpu_usage + '%';
+                document.getElementById('memoryUsage').textContent = data.system.memory_usage + '%';
+                document.getElementById('diskUsage').textContent = data.system.disk_usage + '%';
+            }
+
+            document.getElementById('uptime').textContent = formatUptime(data.uptime || 0);
+
+            // Request stats
+            const requestData = data.requests || {};
+            document.getElementById('totalRequests').textContent = formatNumber(requestData.total || 0);
+            document.getElementById('successfulRequests').textContent = formatNumber(requestData.successful || 0);
+            document.getElementById('errorRequests').textContent = formatNumber(requestData.errors || 0);
+            document.getElementById('avgResponseTime').textContent = formatTime(requestData.avg_response_time_ms || 0);
+
+            // Carousel stats
+            const carouselData = data.carousels || {};
+            document.getElementById('totalCarousels').textContent = formatNumber(carouselData.total_generated || 0);
+            document.getElementById('avgGenerationTime').textContent = formatTime(carouselData.avg_generation_time_ms || 0);
+            document.getElementById('carouselCount').textContent = formatNumber(carouselData.count || 0);
+
+            // API health
+            document.getElementById('errorRate').textContent = (requestData.error_rate || 0).toFixed(2) + '%';
+            document.getElementById('errorRate').className = (requestData.error_rate || 0) < 5
+                ? 'stat-value success-color' : 'stat-value danger-color';
+
+            document.getElementById('apiVersion').textContent = data.api_version || 'v1';
+            document.getElementById('lastUpdateTime').textContent = formatTimestamp(data.timestamp || new Date().toISOString());
+
+            // Update endpoint table
+            updateEndpointTable(data.endpoints || {});
+
+            // Update charts
+            updateCharts(data);
+        }
+
+        // Update endpoint table
+        function updateEndpointTable(endpoints) {
+            const tableBody = document.getElementById('endpointTableBody');
+            tableBody.innerHTML = '';
+
+            if (Object.keys(endpoints).length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="7" class="text-center">No endpoint data available</td>';
+                tableBody.appendChild(row);
+                return;
+            }
+
+            for (const [endpoint, metrics] of Object.entries(endpoints)) {
+                const row = document.createElement('tr');
+
+                // Create status code badges
+                let statusCodeHtml = '';
+                if (metrics.status_codes) {
+                    for (const [code, count] of Object.entries(metrics.status_codes)) {
+                        let badgeClass = 'bg-secondary';
+                        if (code.startsWith('2')) badgeClass = 'bg-success';
+                        else if (code.startsWith('4')) badgeClass = 'bg-warning';
+                        else if (code.startsWith('5')) badgeClass = 'bg-danger';
+
+                        statusCodeHtml += `<span class="badge ${badgeClass} me-1">${code} (${count})</span>`;
+                    }
+                }
+
+                row.innerHTML = `
+                    <td><code>${endpoint}</code></td>
+                    <td>${formatNumber(metrics.count || 0)}</td>
+                    <td>${formatTime(metrics.avg_duration_ms || 0)}</td>
+                    <td>${metrics.error_rate ? metrics.error_rate.toFixed(2) + '%' : '0.00%'}</td>
+                    <td>${formatTime(metrics.min_duration_ms || 0)}</td>
+                    <td>${formatTime(metrics.max_duration_ms || 0)}</td>
+                    <td>${statusCodeHtml}</td>
+                `;
+
+                tableBody.appendChild(row);
+            }
+        }
+
+        // Update charts with metrics data
+        function updateCharts(data) {
+            // Get endpoints for request volume chart
+            const endpoints = Object.keys(data.endpoints || {});
+            const requestCounts = endpoints.map(endpoint => {
+                return (data.endpoints[endpoint].count || 0);
+            });
+
+            // Update request volume chart
+            requestVolumeChart.data.labels = endpoints.map(e => {
+                // Simplify endpoint names for display
+                if (e.length > 20) {
+                    return e.substring(0, 17) + '...';
+                }
+                return e;
+            });
+            requestVolumeChart.data.datasets[0].data = requestCounts;
+            requestVolumeChart.update();
+
+            // Get time for response time chart (we'll simulate with static data for now)
+            // In a real implementation, you'd have a time series of response times
+            const currentTime = new Date();
+            const timeLabels = [];
+            const responseTimeSeries = [];
+
+            // Generate a simulated time series for the response time chart
+            // In practice, this would come from real time series data
+            const lastHour = new Date(currentTime);
+            lastHour.setHours(currentTime.getHours() - 1);
+
+            for (let i = 0; i < 12; i++) {
+                const time = new Date(lastHour);
+                time.setMinutes(time.getMinutes() + (i * 5));
+                timeLabels.push(time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+
+                // Use the actual average response time for the last point
+                // and simulate earlier values for demonstration
+                if (i === 11) {
+                    responseTimeSeries.push(data.requests?.avg_response_time_ms || 100);
+                } else {
+                    const baseValue = data.requests?.avg_response_time_ms || 100;
+                    const randomVariation = (Math.random() * 30) - 15; // +/- 15%
+                    responseTimeSeries.push(Math.max(10, baseValue + randomVariation));
+                }
+            }
+
+            // Update response time chart
+            responseTimeChart.data.labels = timeLabels;
+            responseTimeChart.data.datasets[0].data = responseTimeSeries;
+            responseTimeChart.update();
+        }
+
+        // Fetch metrics from the server
+        async function fetchMetrics() {
+            try {
+                document.getElementById('loadingOverlay').style.display = 'flex';
+
+                const response = await fetch('/metrics');
+                if (!response.ok) {
+                    throw new Error(`HTTP error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                updateDashboard(data);
+
+                document.getElementById('loadingOverlay').style.display = 'none';
+            } catch (error) {
+                console.error('Error fetching metrics:', error);
+                document.getElementById('loadingOverlay').style.display = 'none';
+                alert('Failed to fetch metrics. See console for details.');
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize charts
+            initCharts();
+
+            // Fetch initial metrics
+            fetchMetrics();
+
+            // Set up refresh button
+            document.getElementById('refreshBtn').addEventListener('click', fetchMetrics);
+
+            // Set up automatic refresh every 60 seconds
+            setInterval(fetchMetrics, 60000);
+        });
+    </script>
+</body>
+</html>

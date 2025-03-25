@@ -25,7 +25,7 @@ exclude = '''
 profile = "black"
 multi_line_output = 3
 line_length = 100
-extend-ignore = "E501"
+# Remove the extend-ignore line from here
 
 [tool.mypy]
 python_version = "3.8"
@@ -54,3 +54,7 @@ addopts = [
     "--no-cov-on-fail",
 ]
 asyncio_mode = "auto"
+
+# If you want to use pyproject.toml for flake8 config (requires flake8-pyproject package)
+[tool.flake8]
+extend-ignore = "E501"

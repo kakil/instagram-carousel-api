@@ -27,7 +27,7 @@ The project follows a modular, service-oriented architecture designed for extens
 ```
 instagram_carousel_generator/
 ├── api/                # API endpoints and routing
-├── core/               # Core configuration 
+├── core/               # Core configuration
 ├── models/             # Data models and schemas
 ├── services/           # Business logic
 │   └── image_service/  # Image generation services
@@ -70,7 +70,7 @@ For detailed documentation, please refer to the following:
 - [Deployment Guide](docs/guides/deployment.md)
 - [n8n Workflow Implementation](docs/guides/n8n-workflow.md)
 - [Contributing Guidelines](docs/guides/contributing.md)
-
+p
 ## Installation
 
 ### Quick Start with Docker
@@ -154,7 +154,7 @@ from app.services.image_service import get_image_service, ImageServiceType
 
 # Get the enhanced image service
 service = get_image_service(ImageServiceType.ENHANCED.value, {
-    'width': 1080, 
+    'width': 1080,
     'height': 1080,
     'bg_color': (18, 18, 18)
 })
@@ -244,8 +244,8 @@ from app.services.image_service import BaseImageService
 
 class CustomImageService(BaseImageService):
     """Custom implementation with unique styling"""
-    
-    def create_slide_image(self, title, text, slide_number, total_slides, 
+
+    def create_slide_image(self, title, text, slide_number, total_slides,
                            include_logo=False, logo_path=None):
         # Your custom implementation
         # ...
@@ -272,7 +272,7 @@ DEFAULT_BG_COLOR_B=0
 DEBUG=False
 PRODUCTION=True
 PUBLIC_BASE_URL="https://your-domain.com"
-API_KEY="your-secure-api-key" 
+API_KEY="your-secure-api-key"
 ALLOW_ORIGINS="https://your-app-domain.com"
 ```
 
@@ -281,7 +281,7 @@ ALLOW_ORIGINS="https://your-app-domain.com"
 server {
     listen 80;
     server_name api.yourdomain.com;
-    
+
     location / {
         proxy_pass http://localhost:5001;
         proxy_set_header Host $host;

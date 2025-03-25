@@ -14,9 +14,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Load environment variables from .env file
 load_dotenv()
-
 # Get the base directory of the package
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+# Create logs directory if it doesn't exist
+LOGS_DIR = BASE_DIR / "logs"
+LOGS_DIR.mkdir(exist_ok=True)
 
 
 class Settings(BaseSettings):
@@ -149,6 +151,59 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = Field(
         default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"),
         description="Logging level",
+    )
+    LOG_DIR: Path = Field(
+        default_factory=lambda: Path(os.getenv("LOG_DIR", str(LOGS_DIR))),
+        description="Directory for log files",
+    )
+    ENABLE_FILE_LOGGING: bool = Field(
+        default_factory=lambda: os.getenv("ENABLE_FILE_LOGGING", "True").lower() == "true",
+        description="Enable logging to files",
+    )
+    LOG_FORMAT_JSON: bool = Field(
+        default_factory=lambda: os.getenv("LOG_FORMAT_JSON", "True").lower() == "true",
+        description="Format logs as JSON (better for log aggregation)",
+    )
+
+    # Log Rotation Settings (optional, can be configured later)
+    LOG_ROTATION_TYPE: str = Field(
+        default_factory=lambda: os.getenv("LOG_ROTATION_TYPE", "size"),
+        description="Log rotation type (size or time)",
+    )
+    LOG_MAX_SIZE: int = Field(
+        default_factory=lambda: int(os.getenv("LOG_MAX_SIZE", "10485760")),  # 10MB default
+        description="Maximum log file size in bytes for size-based rotation",
+    )
+    LOG_ROTATION_WHEN: str = Field(
+        default_factory=lambda: os.getenv("LOG_ROTATION_WHEN", "D"),
+        description="Time unit for time-based log rotation (S, M, H, D, W0-W6, midnight)",
+    )
+    LOG_ROTATION_INTERVAL: int = Field(
+        default_factory=lambda: int(os.getenv("LOG_ROTATION_INTERVAL", "1")),
+        description="Interval for time-based log rotation",
+    )
+    LOG_BACKUP_COUNT: int = Field(
+        default_factory=lambda: int(os.getenv("LOG_BACKUP_COUNT", "30")),
+        description="Number of backup log files to keep",
+    )
+
+    # Monitoring settings (disabled by default for now)
+    ENABLE_MONITORING: bool = Field(
+        default_factory=lambda: os.getenv("ENABLE_MONITORING", "False").lower() == "true",
+        description="Enable monitoring features",
+    )
+    ENABLE_SYSTEM_METRICS: bool = Field(
+        default_factory=lambda: os.getenv("ENABLE_SYSTEM_METRICS", "False").lower() == "true",
+        description="Enable system metrics collection",
+    )
+    METRICS_COLLECTION_INTERVAL: int = Field(
+        default_factory=lambda: int(os.getenv("METRICS_COLLECTION_INTERVAL", "60")),
+        description="Interval in seconds for collecting system metrics",
+    )
+    ENABLE_PERFORMANCE_MONITORING: bool = Field(
+        default_factory=lambda: os.getenv("ENABLE_PERFORMANCE_MONITORING", "False").lower()
+        == "true",
+        description="Enable performance monitoring",
     )
 
     # Use ConfigDict instead of Config class in Pydantic v2

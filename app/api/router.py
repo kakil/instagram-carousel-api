@@ -11,6 +11,9 @@ from fastapi import APIRouter, Depends, Request
 # Import the v1 router (current version)
 from app.api.v1.endpoints import router as router_v1
 
+# Import the monitoring router
+from app.api.v1.monitoring_endpoints import router as monitoring_router
+
 # Set up logging
 logger = logging.getLogger(__name__)
 
@@ -24,6 +27,15 @@ v1_tag = {
     "externalDocs": {
         "description": "API Versioning Documentation",
         "url": "/docs/api/versioning.md",
+    },
+}
+
+monitoring_tag = {
+    "name": "monitoring",
+    "description": "Monitoring and metrics endpoints",
+    "externalDocs": {
+        "description": "Monitoring Documentation",
+        "url": "/docs/guides/monitoring.md",
     },
 }
 
@@ -66,6 +78,11 @@ def set_v1_api_version(request: Request):
 
 api_router.include_router(
     router_v1, prefix="/v1", dependencies=[Depends(set_v1_api_version)], tags=["v1"]
+)
+
+# Include monitoring router without version prefix but with monitoring tag
+api_router.include_router(
+    monitoring_router, dependencies=[Depends(set_v1_api_version)], tags=["monitoring"]
 )
 
 # When new versions are added, they can be included like this:
