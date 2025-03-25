@@ -1,4 +1,11 @@
-from setuptools import setup, find_packages
+"""
+Setup script for the Instagram Carousel Generator package.
+
+This module handles the installation and package configuration of the
+Instagram Carousel Generator, defining dependencies, metadata, and
+entry points for the application.
+"""
+from setuptools import find_packages, setup
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -14,9 +21,7 @@ setup(
     url="https://github.com/kakil/instagram-carousel-api",
     packages=find_packages(),
     include_package_data=True,
-    package_data={
-        "app": ["static/assets/*"]
-    },
+    package_data={"app": ["static/assets/*"]},
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

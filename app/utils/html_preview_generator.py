@@ -1,27 +1,24 @@
 #!/usr/bin/env python3
 """
-Carousel Preview Generator
+Carousel Preview Generator.
 
 This script generates an HTML file for previewing Instagram carousel images.
 It can work directly with the API response or with image files.
 """
-
-import os
-import sys
-import json
 import argparse
 import base64
+import json
+import sys
 from datetime import datetime
 
 
 def hex_to_base64(hex_string):
-    """Convert hex string to base64 for HTML embedding"""
+    """Convert hex string to base64 for HTML embedding."""
     try:
         # Convert hex to binary
         binary_data = bytes.fromhex(hex_string)
-
         # Convert binary to base64
-        base64_data = base64.b64encode(binary_data).decode('utf-8')
+        base64_data = base64.b64encode(binary_data).decode("utf-8")
         return base64_data
     except Exception as e:
         print(f"Error converting hex to base64: {e}")
@@ -30,12 +27,11 @@ def hex_to_base64(hex_string):
 
 def generate_html_preview(carousel_data, output_path=None):
     """
-    Generate an HTML file to preview carousel images
+    Generate an HTML file to preview carousel images.
 
     Args:
         carousel_data: Dictionary containing carousel data (from API response)
         output_path: Path to save the HTML file (default: carousel_preview_{timestamp}.html)
-
     Returns:
         Path to the generated HTML file
     """
@@ -43,9 +39,8 @@ def generate_html_preview(carousel_data, output_path=None):
     if not output_path:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_path = f"carousel_preview_{timestamp}.html"
-
     # Generate HTML content
-    html_content = f"""<!DOCTYPE html>
+    html_content = f"""<!DOCTYPE html>.
 <html>
 <head>
     <meta charset="UTF-8">
@@ -189,64 +184,71 @@ def generate_html_preview(carousel_data, output_path=None):
             <span>Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</span>
         </div>
     </header>
-
     <div class="carousel-container">
 """
-
     # Add warnings if any
-    if carousel_data.get('warnings'):
+    if carousel_data.get("warnings"):
         html_content += '        <div class="warning">\n'
-        html_content += '            <strong>Warnings:</strong>\n'
-        html_content += '            <ul>\n'
-        for warning in carousel_data['warnings']:
-            html_content += f'                <li>{warning}</li>\n'
-        html_content += '            </ul>\n'
-        html_content += '        </div>\n'
+        html_content += "            <strong>Warnings:</strong>\n"
+        html_content += "            <ul>\n"
+        for warning in carousel_data["warnings"]:
+            html_content += f"                <li>{warning}</li>\n"
+        html_content += "            </ul>\n"
+        html_content += "        </div>\n"
 
     # Add carousel
     html_content += '        <div class="carousel" id="carousel">\n'
 
     # Add slides
-    for i, slide in enumerate(carousel_data.get('slides', [])):
+    for i, slide in enumerate(carousel_data.get("slides", [])):
         slide_num = i + 1
-        filename = slide.get('filename', f'slide_{slide_num}.png')
-        content = slide.get('content', '')
-        is_error = 'error' in filename.lower()
+        filename = slide.get("filename", f"slide_{slide_num}.png")
+        content = slide.get("content", "")
+        is_error = "error" in filename.lower()
 
         # Convert hex to base64
-        base64_data = hex_to_base64(content) if content else ''
+        base64_data = hex_to_base64(content) if content else ""
 
-        html_content += f'            <div class="slide{" error-slide" if is_error else ""}" id="slide{slide_num}">\n'
-        html_content += f'                <div class="slide-header">\n'
-        html_content += f'                    <div class="slide-num">Slide {slide_num} of {len(carousel_data.get("slides", []))}</div>\n'
-        html_content += f'                    <div class="slide-filename">{filename}</div>\n'
-        html_content += f'                </div>\n'
-        html_content += f'                <div class="slide-image">\n'
+        html_content += (
+            f'            <div class="slide{" error-slide" if is_error else ""}" '
+            f'id="slide{slide_num}">\n'
+        )
+        html_content += '                <div class="slide-header">\n'
+        html_content += (
+            f'                    <div class="slide-num">Slide {slide_num} of '
+            f'{len(carousel_data.get("slides", []))}</div>\n'
+        )
+        html_content += '                    <div class="slide-filename">{filename}</div>\n'
+        html_content += "                </div>\n"
+        html_content += '                <div class="slide-image">\n'
 
         if base64_data:
-            html_content += f'                    <img src="data:image/png;base64,{base64_data}" alt="Slide {slide_num}">\n'
+            html_content += (
+                f'                    <img src="data:image/png;base64,{base64_data}" '
+                f'alt="Slide {slide_num}">\n'
+            )
         else:
-            html_content += f'                    <p>Image data not available</p>\n'
+            html_content += "                    <p>Image data not available</p>\n"
 
-        html_content += f'                </div>\n'
-        html_content += f'            </div>\n'
+        html_content += "                </div>\n"
+        html_content += "            </div>\n"
 
-    html_content += '        </div>\n'
+    html_content += "        </div>\n"
 
     # Add slide controls
     html_content += '        <div class="slide-controls">\n'
     html_content += '            <button id="prevBtn">Previous</button>\n'
     html_content += '            <button id="nextBtn">Next</button>\n'
-    html_content += '        </div>\n'
+    html_content += "        </div>\n"
 
     # Add slide indicators
     html_content += '        <div class="slide-indicator" id="indicator">\n'
-    for i in range(len(carousel_data.get('slides', []))):
+    for i in range(len(carousel_data.get("slides", []))):
         html_content += f'            <span class="dot" data-slide="{i + 1}"></span>\n'
-    html_content += '        </div>\n'
+    html_content += "        </div>\n"
 
     # Close container
-    html_content += '    </div>\n'
+    html_content += "    </div>\n"
 
     # Add JavaScript
     html_content += """
@@ -257,21 +259,17 @@ def generate_html_preview(carousel_data, output_path=None):
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
             const dots = document.querySelectorAll('.dot');
-
             let currentSlide = 1;
             updateIndicator();
-
             // Event listeners
             prevBtn.addEventListener('click', showPreviousSlide);
             nextBtn.addEventListener('click', showNextSlide);
-
             dots.forEach(dot => {
                 dot.addEventListener('click', function() {
                     currentSlide = parseInt(this.getAttribute('data-slide'));
                     showSlide(currentSlide);
                 });
             });
-
             // Navigation functions
             function showPreviousSlide() {
                 if (currentSlide > 1) {
@@ -279,21 +277,18 @@ def generate_html_preview(carousel_data, output_path=None):
                     showSlide(currentSlide);
                 }
             }
-
             function showNextSlide() {
                 if (currentSlide < slides.length) {
                     currentSlide++;
                     showSlide(currentSlide);
                 }
             }
-
             function showSlide(slideNum) {
                 const slide = document.getElementById(`slide${slideNum}`);
                 slide.scrollIntoView({ behavior: 'smooth' });
                 currentSlide = slideNum;
                 updateIndicator();
             }
-
             function updateIndicator() {
                 dots.forEach((dot, index) => {
                     if (index + 1 === currentSlide) {
@@ -302,12 +297,10 @@ def generate_html_preview(carousel_data, output_path=None):
                         dot.classList.remove('active');
                     }
                 });
-
                 // Update button states
                 prevBtn.disabled = currentSlide === 1;
                 nextBtn.disabled = currentSlide === slides.length;
             }
-
             // Keyboard navigation
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'ArrowLeft') {
@@ -316,12 +309,10 @@ def generate_html_preview(carousel_data, output_path=None):
                     showNextSlide();
                 }
             });
-
             // Handle scroll events to update the current slide indicator
             carousel.addEventListener('scroll', function() {
                 const slideWidth = slides[0].offsetWidth + 20; // 20px margin
                 const scrollPosition = carousel.scrollLeft;
-
                 // Calculate current slide based on scroll position
                 currentSlide = Math.round(scrollPosition / slideWidth) + 1;
                 updateIndicator();
@@ -331,9 +322,8 @@ def generate_html_preview(carousel_data, output_path=None):
 </body>
 </html>
 """
-
     # Write HTML file
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
     print(f"HTML preview generated: {output_path}")
@@ -341,26 +331,25 @@ def generate_html_preview(carousel_data, output_path=None):
 
 
 def main():
-    """Main function to run the preview generator"""
+    """Run the preview generator."""
     parser = argparse.ArgumentParser(
-        description='Generate HTML previews for Instagram carousel images')
-    parser.add_argument('--input', required=True,
-                        help='Input JSON file (API response)')
-    parser.add_argument('--output',
-                        help='Output HTML file path')
+        description="Generate HTML previews for Instagram carousel images"
+    )
+    parser.add_argument("--input", required=True, help="Input JSON file (API response)")
+    parser.add_argument("--output", help="Output HTML file path")
 
     args = parser.parse_args()
 
     try:
         # Read input JSON file
-        with open(args.input, 'r', encoding='utf-8') as f:
+        with open(args.input, "r", encoding="utf-8") as f:
             carousel_data = json.load(f)
 
         # Generate HTML preview
         output_path = generate_html_preview(carousel_data, args.output)
 
         print(f"Preview file created at: {output_path}")
-        print(f"Open in your web browser to view the carousel")
+        print("Open in your web browser to view the carousel")
 
         return 0
 

@@ -1,18 +1,26 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from typing import List, Optional
-from PIL import Image, ImageDraw, ImageFont
+"""
+Minimal implementation of the Instagram Carousel Generator API.
+
+This module provides a simplified version of the Instagram Carousel Generator,
+containing all core functionality in a single file for easier understanding and deployment.
+It includes image generation utilities, API endpoints, and data models.
+"""
 import os
 import tempfile
 import uuid
 from datetime import datetime
+from typing import List, Optional
+
 import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from PIL import Image, ImageDraw, ImageFont
+from pydantic import BaseModel, Field
 
 app = FastAPI(
     title="Instagram Carousel Generator API - Minimal",
     description="API for generating Instagram carousel images with consistent styling",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Configure CORS
@@ -28,46 +36,44 @@ app.add_middleware(
 # Add health check endpoint
 @app.get("/health")
 async def health_check():
-    """Simple health check endpoint"""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat()
-    }
+    """Check the health status of the API."""
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 
 # Define models directly in this file to avoid circular imports
 class SlideContent(BaseModel):
-    """Content for a single carousel slide"""
+    """Content for a single carousel slide."""
+
     text: str = Field(..., description="Text content for the slide")
 
 
 class CarouselRequest(BaseModel):
-    """Request model for carousel generation"""
+    """Request model for carousel generation."""
+
     carousel_title: str = Field(..., description="Title for the carousel")
-    slides: List[SlideContent] = Field(...,
-                                       description="List of slide contents")
+    slides: List[SlideContent] = Field(..., description="List of slide contents")
     include_logo: bool = Field(False, description="Whether to include a logo")
     logo_path: Optional[str] = Field(None, description="Path to logo file")
 
 
 class SlideResponse(BaseModel):
-    """Response model for a generated slide"""
+    """Response model for a generated slide."""
+
     filename: str = Field(..., description="Filename of the generated image")
     content: str = Field(..., description="Hex-encoded image content")
 
 
 class CarouselResponse(BaseModel):
-    """Response model for carousel generation"""
+    """Response model for carousel generation."""
+
     status: str = Field(..., description="Status of the operation")
-    carousel_id: str = Field(...,
-                             description="Unique identifier for the carousel")
-    slides: List[SlideResponse] = Field(...,
-                                        description="Generated slide images")
+    carousel_id: str = Field(..., description="Unique identifier for the carousel")
+    slides: List[SlideResponse] = Field(..., description="Generated slide images")
 
 
 # Define image utilities directly in this file
 def create_gradient_text(draw, text, position, font, width, colors=None):
-    """Create gradient text from one color to another"""
+    """Create gradient text from one color to another."""
     if colors is None:
         # Default black to white gradient
         colors = [(0, 0, 0), (255, 255, 255)]
@@ -108,9 +114,8 @@ def create_gradient_text(draw, text, position, font, width, colors=None):
     return text_img, (x, y)
 
 
-def create_slide_image(title, text, slide_number, total_slides,
-                       include_logo=False, logo_path=None):
-    """Create an Instagram carousel slide with the specified styling"""
+def create_slide_image(title, text, slide_number, total_slides, include_logo=False, logo_path=None):
+    """Create an Instagram carousel slide with the specified styling."""
     width, height = 1080, 1080  # Default image size
     bg_color = (18, 18, 18)  # Dark background
     image = Image.new("RGB", (width, height), bg_color)
@@ -130,33 +135,37 @@ def create_slide_image(title, text, slide_number, total_slides,
             (width // 2, 150),
             title_font,
             width,
-            [(0, 0, 0), (255, 255, 255)]  # Black to white gradient
+            [(0, 0, 0), (255, 255, 255)],  # Black to white gradient
         )
         image.paste(gradient_text, pos, gradient_text)
 
     # Add main text (simplified for minimal version)
-    draw.text((width // 2, height // 2), text, fill="white", font=text_font,
-              anchor="mm")
+    draw.text((width // 2, height // 2), text, fill="white", font=text_font, anchor="mm")
 
     # Add navigation arrows and slide counter
     if slide_number > 1:
         draw.text((40, height // 2), "←", fill="white", font=navigation_font)
 
     if slide_number < total_slides:
-        draw.text((width - 40, height // 2), "→", fill="white",
-                  font=navigation_font)
+        draw.text((width - 40, height // 2), "→", fill="white", font=navigation_font)
 
     # Add slide counter
     counter_text = f"{slide_number}/{total_slides}"
-    draw.text((width // 2, height - 50), counter_text, fill="white",
-              font=navigation_font, anchor="mm")
+    draw.text(
+        (width // 2, height - 50),
+        counter_text,
+        fill="white",
+        font=navigation_font,
+        anchor="mm",
+    )
 
     return image
 
 
-def create_carousel_images(carousel_title, slides_data, carousel_id,
-                           include_logo=False, logo_path=None):
-    """Create carousel images for Instagram based on text content"""
+def create_carousel_images(
+    carousel_title, slides_data, carousel_id, include_logo=False, logo_path=None
+):
+    """Create carousel images for Instagram based on text content."""
     with tempfile.TemporaryDirectory() as temp_dir:
         image_files = []
 
@@ -174,7 +183,7 @@ def create_carousel_images(carousel_title, slides_data, carousel_id,
                 slide_number,
                 total_slides,
                 include_logo,
-                logo_path
+                logo_path,
             )
 
             # Save image
@@ -186,17 +195,19 @@ def create_carousel_images(carousel_title, slides_data, carousel_id,
                 file_content = f.read()
 
             # Add to result
-            image_files.append({
-                "filename": f"slide_{slide_number}.png",
-                "content": file_content.hex()  # Convert binary to hex for JSON
-            })
+            image_files.append(
+                {
+                    "filename": f"slide_{slide_number}.png",
+                    "content": file_content.hex(),  # Convert binary to hex for JSON
+                }
+            )
 
         return image_files
 
 
 @app.post("/api/generate-carousel", response_model=CarouselResponse)
 async def generate_carousel(request: CarouselRequest):
-    """Generate carousel images from provided text content"""
+    """Generate carousel images from provided text content."""
     try:
         # Create a unique ID for this carousel
         carousel_id = str(uuid.uuid4())[:8]
@@ -207,24 +218,14 @@ async def generate_carousel(request: CarouselRequest):
             request.slides,
             carousel_id,
             request.include_logo,
-            request.logo_path
+            request.logo_path,
         )
 
-        return {
-            "status": "success",
-            "carousel_id": carousel_id,
-            "slides": result
-        }
+        return {"status": "success", "carousel_id": carousel_id, "slides": result}
 
     except Exception as e:
-        raise HTTPException(status_code=500,
-                            detail=f"Error generating carousel: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating carousel: {str(e)}")
 
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "app_minimal:app",
-        host="localhost",
-        port=5001,
-        reload=True
-    )
+    uvicorn.run("app_minimal:app", host="localhost", port=5001, reload=True)

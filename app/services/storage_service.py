@@ -3,15 +3,14 @@ Storage service for the Instagram Carousel Generator.
 
 This module provides functionality for storing and managing carousel images.
 """
-
+import logging
 import os
 import shutil
-import logging
 from datetime import datetime, timedelta
-import uuid
-from fastapi import BackgroundTasks
-from typing import List, Dict, Any, Optional, Union
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+from fastapi import BackgroundTasks
 
 from app.core.config import settings
 
@@ -35,10 +34,11 @@ class StorageService:
     def _get_temp_dir(self) -> str:
         """
         Get the temporary directory path from environment variables or configuration.
+
         Falls back to a local directory for development environments.
         """
         # First check settings
-        if hasattr(settings, 'TEMP_DIR') and settings.TEMP_DIR:
+        if hasattr(settings, "TEMP_DIR") and settings.TEMP_DIR:
             return str(settings.TEMP_DIR)
 
         # Then check environment variable
@@ -49,19 +49,13 @@ class StorageService:
         # If we're in production (check for some indicator in env)
         if os.getenv("PRODUCTION", "").lower() == "true":
             # Use the production path from environment or a sensible default
-            return os.getenv(
-                "PRODUCTION_TEMP_DIR",
-                str(settings.BASE_DIR / "static" / "temp")
-            )
+            return os.getenv("PRODUCTION_TEMP_DIR", str(settings.BASE_DIR / "static" / "temp"))
 
         # For development environment, use a local directory
         return str(settings.BASE_DIR / "static" / "temp")
 
     def save_carousel_images(
-            self,
-            carousel_id: str,
-            images_data: List[Dict[str, Any]],
-            base_url: str
+        self, carousel_id: str, images_data: List[Dict[str, Any]], base_url: str
     ) -> List[str]:
         """
         Save carousel images to temporary directory and return public URLs.
@@ -84,31 +78,32 @@ class StorageService:
         for image in images_data:
             try:
                 # Decode hex content to binary
-                binary_content = bytes.fromhex(image['content'])
+                binary_content = bytes.fromhex(image["content"])
 
                 # Save to file
-                file_path = carousel_dir / image['filename']
-                with open(file_path, 'wb') as f:
+                file_path = carousel_dir / image["filename"]
+                with open(file_path, "wb") as f:
                     f.write(binary_content)
 
                 # Generate public URL using the API prefix from settings
                 api_prefix = settings.get_full_api_prefix()
-                public_url = f"{base_url.rstrip('/')}{api_prefix}/temp/{carousel_id}/{image['filename']}"
+                public_url = (
+                    f"{base_url.rstrip('/')}{api_prefix}/temp/{carousel_id}/{image['filename']}"
+                )
                 public_urls.append(public_url)
 
             except Exception as e:
-                logger.error(
-                    f"Error saving image {image.get('filename', 'unknown')}: {str(e)}")
+                logger.error(f"Error saving image {image.get('filename', 'unknown')}: {str(e)}")
                 # Continue with other images
 
         logger.info(f"Saved {len(public_urls)} images for carousel {carousel_id}")
         return public_urls
 
     def schedule_cleanup(
-            self,
-            background_tasks: BackgroundTasks,
-            directory_path: Union[str, Path],
-            hours: int = 24
+        self,
+        background_tasks: BackgroundTasks,
+        directory_path: Union[str, Path],
+        hours: int = 24,
     ):
         """
         Schedule directory cleanup after specified hours.
@@ -122,7 +117,7 @@ class StorageService:
         try:
             directory_path = Path(directory_path)
             cleanup_file = directory_path / ".cleanup"
-            with open(cleanup_file, 'w') as f:
+            with open(cleanup_file, "w") as f:
                 cleanup_time = datetime.now() + timedelta(hours=hours)
                 f.write(cleanup_time.isoformat())
 
@@ -133,7 +128,7 @@ class StorageService:
     def cleanup_old_files(self, hours: Optional[int] = None):
         """
         Remove temporary files older than the specified or configured lifetime.
-        
+
         Args:
             hours: Optional number of hours to use for determining file age.
                   If not provided, uses the configured lifetime from settings.
@@ -156,27 +151,22 @@ class StorageService:
                 cleanup_file = dir_path / ".cleanup"
                 if cleanup_file.exists():
                     try:
-                        with open(cleanup_file, 'r') as f:
+                        with open(cleanup_file, "r") as f:
                             cleanup_time = datetime.fromisoformat(f.read().strip())
 
                         if now > cleanup_time:
                             shutil.rmtree(dir_path)
                             count += 1
                     except Exception as e:
-                        logger.error(
-                            f"Error parsing cleanup file for {dir_path}: {e}")
+                        logger.error(f"Error parsing cleanup file for {dir_path}: {e}")
                         # Fallback to modification time
-                        file_modified = datetime.fromtimestamp(
-                            os.path.getmtime(dir_path)
-                        )
+                        file_modified = datetime.fromtimestamp(os.path.getmtime(dir_path))
                         if now - file_modified > timedelta(hours=cleanup_hours):
                             shutil.rmtree(dir_path)
                             count += 1
                 else:
                     # No cleanup file, use modification time
-                    file_modified = datetime.fromtimestamp(
-                        os.path.getmtime(dir_path)
-                    )
+                    file_modified = datetime.fromtimestamp(os.path.getmtime(dir_path))
                     if now - file_modified > timedelta(hours=cleanup_hours):
                         shutil.rmtree(dir_path)
                         count += 1

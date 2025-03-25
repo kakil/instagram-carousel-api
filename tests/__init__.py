@@ -1,3 +1,1 @@
-"""
-Test package for the Instagram Carousel Generator.
-"""
+"""Test package for the Instagram Carousel Generator."""

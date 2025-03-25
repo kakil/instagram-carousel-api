@@ -4,13 +4,12 @@ Image utility functions for the Instagram Carousel Generator.
 This module provides helper functions for image processing, such as
 text sanitization, gradient text creation, and font loading.
 """
+import logging
+import traceback
+import unicodedata
+from typing import List, Optional, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
-import logging
-import unicodedata
-import traceback
-from typing import Tuple, List, Optional, Dict, Any
-import os
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -35,17 +34,17 @@ def enhanced_sanitize_text(text) -> str:
 
     # Replace specific problematic characters that might cause rendering issues
     replacements = {
-        '\u2192': '->',  # Right arrow
-        '\u2190': '<-',  # Left arrow
-        '\u2191': '^',  # Up arrow
-        '\u2193': 'v',  # Down arrow
-        '\u2018': "'",  # Left single quote
-        '\u2019': "'",  # Right single quote
-        '\u201C': '"',  # Left double quote
-        '\u201D': '"',  # Right double quote
-        '\u2013': '-',  # En dash
-        '\u2014': '-',  # Em dash
-        '\u2026': '...',  # Ellipsis
+        "\u2192": "->",  # Right arrow
+        "\u2190": "<-",  # Left arrow
+        "\u2191": "^",  # Up arrow
+        "\u2193": "v",  # Down arrow
+        "\u2018": "'",  # Left single quote
+        "\u2019": "'",  # Right single quote
+        "\u201C": '"',  # Left double quote
+        "\u201D": '"',  # Right double quote
+        "\u2013": "-",  # En dash
+        "\u2014": "-",  # Em dash
+        "\u2026": "...",  # Ellipsis
         # Add more problematic characters as needed
     }
 
@@ -53,7 +52,7 @@ def enhanced_sanitize_text(text) -> str:
         text = text.replace(char, replacement)
 
     # First, try NFC normalization (canonical composition)
-    text = unicodedata.normalize('NFC', text)
+    text = unicodedata.normalize("NFC", text)
 
     # Then do a safer approach that attempts to preserve as much as possible
     # while removing characters that can't be rendered
@@ -62,7 +61,7 @@ def enhanced_sanitize_text(text) -> str:
         # Check if character is renderable or convert to a safe replacement
         try:
             # Encode and decode as ASCII to check if it's a simple character
-            char.encode('ascii')
+            char.encode("ascii")
             result.append(char)
         except UnicodeEncodeError:
             # For non-ASCII characters, try to keep them if they're common
@@ -70,20 +69,24 @@ def enhanced_sanitize_text(text) -> str:
             try:
                 # Test if Pillow can render this character with default font
                 # This is an indirect test by checking if it's a known Unicode category
-                if unicodedata.category(char)[
-                    0] in 'LNPSZ':  # Letter, Number, Punctuation, Symbol, Separator
+                if (
+                    unicodedata.category(char)[0] in "LNPSZ"
+                ):  # Letter, Number, Punctuation, Symbol, Separator
                     result.append(char)
                 else:
                     # Replace with '?' for unknown/uncommon categories
-                    result.append('?')
-            except:
+                    result.append("?")
+            except Exception as e:
+                logger.error(f"Error with text fallback: {e}")
                 # Fallback for any unexpected issues
-                result.append('?')
+                result.append("?")
 
-    return ''.join(result)
+    return "".join(result)
 
 
-def safe_load_font(font_path: str, size: int, fallback_size: Optional[int] = None) -> ImageFont.FreeTypeFont:
+def safe_load_font(
+    font_path: str, size: int, fallback_size: Optional[int] = None
+) -> ImageFont.FreeTypeFont:
     """
     Safely load a font with fallbacks.
 
@@ -101,12 +104,18 @@ def safe_load_font(font_path: str, size: int, fallback_size: Optional[int] = Non
         logger.warning(f"Could not load font {font_path} at size {size}: {e}")
         try:
             # Try loading a common system font
-            for system_font in ['Arial.ttf', 'DejaVuSans.ttf', 'FreeSans.ttf',
-                            'LiberationSans-Regular.ttf']:
+            for system_font in [
+                "Arial.ttf",
+                "DejaVuSans.ttf",
+                "FreeSans.ttf",
+                "LiberationSans-Regular.ttf",
+            ]:
                 try:
-                    return ImageFont.truetype(system_font,
-                                          size if fallback_size is None else fallback_size)
-                except:
+                    return ImageFont.truetype(
+                        system_font, size if fallback_size is None else fallback_size
+                    )
+                except Exception as e:
+                    logger.error(f"Error with text fallback: {e}")
                     continue
 
             # If all else fails, use default
@@ -117,12 +126,12 @@ def safe_load_font(font_path: str, size: int, fallback_size: Optional[int] = Non
 
 
 def create_gradient_text(
-        draw: ImageDraw.Draw,
-        text: str,
-        position: Tuple[int, int],
-        font: ImageFont.FreeTypeFont,
-        width: int,
-        colors: List[Tuple[int, int, int]] = None
+    draw: ImageDraw.Draw,
+    text: str,
+    position: Tuple[int, int],
+    font: ImageFont.FreeTypeFont,
+    width: int,
+    colors: List[Tuple[int, int, int]] = None,
 ) -> Tuple[Image.Image, Tuple[int, int]]:
     """
     Create gradient text from one color to another with improved error handling.
@@ -175,8 +184,7 @@ def create_gradient_text(
             gradient_draw.line([(i, 0), (i, text_height)], fill=brightness)
 
         # Create a transparent image for the text
-        text_img = Image.new("RGBA", (text_width, text_height),
-                             color=(0, 0, 0, 0))
+        text_img = Image.new("RGBA", (text_width, text_height), color=(0, 0, 0, 0))
         text_draw = ImageDraw.Draw(text_img)
 
         # Draw the text in white
@@ -202,25 +210,34 @@ def create_gradient_text(
 
         try:
             # Try to render simplified text
-            simple_text = ''.join(
-                c for c in text if c.isalnum() or c.isspace() or c in '.,!?-:;')
-            fallback_draw.text((width // 2, 50),
-                               simple_text or "[Text Rendering Error]",
-                               font=font, fill="white", anchor="mm")
-        except:
+            simple_text = "".join(c for c in text if c.isalnum() or c.isspace() or c in ".,!?-:;")
+            fallback_draw.text(
+                (width // 2, 50),
+                simple_text or "[Text Rendering Error]",
+                font=font,
+                fill="white",
+                anchor="mm",
+            )
+        except Exception as e:
+            logger.error(f"Error in create_gradient_text: {e}")
             # Ultimate fallback
-            fallback_draw.text((width // 2, 50), "[Text Rendering Error]",
-                               font=font, fill="white", anchor="mm")
+            fallback_draw.text(
+                (width // 2, 50),
+                "[Text Rendering Error]",
+                font=font,
+                fill="white",
+                anchor="mm",
+            )
 
         return fallback_img, (0, position[1] - 50)
 
 
 def create_enhanced_error_slide(
-        slide_number: int, 
-        total_slides: int, 
-        error_message: str,
-        width: int = 1080, 
-        height: int = 1080
+    slide_number: int,
+    total_slides: int,
+    error_message: str,
+    width: int = 1080,
+    height: int = 1080,
 ) -> Image.Image:
     """
     Create an improved error slide with more helpful information.
@@ -247,8 +264,7 @@ def create_enhanced_error_slide(
     # Error title
     title = "Error Creating Slide"
     text_position = (width // 2, height // 2 - 150)
-    draw.text(text_position, title, fill=(255, 100, 100), anchor="mm",
-              font=title_font)
+    draw.text(text_position, title, fill=(255, 100, 100), anchor="mm", font=title_font)
 
     # Simplified error message
     simple_error = "Error processing text"
@@ -261,8 +277,7 @@ def create_enhanced_error_slide(
 
     # Add technical information in smaller text
     text_position = (width // 2, height // 2 - 70)
-    draw.text(text_position, simple_error, fill=(240, 240, 240), anchor="mm",
-              font=body_font)
+    draw.text(text_position, simple_error, fill=(240, 240, 240), anchor="mm", font=body_font)
 
     # Add more detailed error info
     error_detail = error_message
@@ -291,29 +306,38 @@ def create_enhanced_error_slide(
     # Draw each line of text
     y_position = height // 2 + 20
     for line in lines:
-        draw.text((width // 2, y_position), line, fill=(200, 200, 200),
-                  anchor="mm", font=small_font)
+        draw.text(
+            (width // 2, y_position),
+            line,
+            fill=(200, 200, 200),
+            anchor="mm",
+            font=small_font,
+        )
         y_position += 30
 
     # Add instruction
     instruction = "Please check your text input for special characters"
-    draw.text((width // 2, height // 2 + 150), instruction,
-              fill=(180, 180, 255), anchor="mm", font=body_font)
+    draw.text(
+        (width // 2, height // 2 + 150),
+        instruction,
+        fill=(180, 180, 255),
+        anchor="mm",
+        font=body_font,
+    )
 
     # Add slide counter
     counter_text = f"{slide_number}/{total_slides}"
     counter_position = (width // 2, height - 50)
-    draw.text(counter_position, counter_text, fill="white", anchor="mm",
-              font=small_font)
+    draw.text(counter_position, counter_text, fill="white", anchor="mm", font=small_font)
 
     # Add decorative elements
     draw.rectangle(
         (width // 2 - 150, height // 2 - 180, width // 2 + 150, height // 2 - 180 + 4),
-        fill=(255, 100, 100)
+        fill=(255, 100, 100),
     )
     draw.rectangle(
         (width // 2 - 100, height // 2 + 180, width // 2 + 100, height // 2 + 180 + 4),
-        fill=(180, 180, 255)
+        fill=(180, 180, 255),
     )
 
     return img

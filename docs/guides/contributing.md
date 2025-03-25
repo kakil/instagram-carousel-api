@@ -34,7 +34,7 @@ Enhancement suggestions are always welcome! Please include:
 We actively welcome pull requests. Here's the process:
 
 1. Fork the repository
-2. Create a branch for your feature or bugfix (`git checkout -b feature/your-feature-name`)
+2. Create a branch for your dfeature or bugfix (`git checkout -b feature/your-feature-name`)
 3. Make your changes
 4. Add or update tests as needed
 5. Run tests to ensure they pass
@@ -95,14 +95,14 @@ def process_data(data: Dict[str, Any]) -> List[str]:
 ```python
 def function_with_types_in_docstring(param1: int, param2: str) -> bool:
     """Example function with types documented in the docstring.
-    
+
     Args:
         param1: The first parameter.
         param2: The second parameter.
-        
+
     Returns:
         True if successful, False otherwise.
-    
+
     Raises:
         ValueError: If param1 is negative.
     """

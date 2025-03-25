@@ -4,38 +4,33 @@ Tests for dependency injection in the Instagram Carousel Generator.
 This module demonstrates how to test API endpoints with mocked dependencies,
 showing the benefits of proper dependency injection for testability.
 """
-
-import pytest
-from fastapi import Request
-from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, patch
 import os
 import tempfile
 import time
 from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
+from fastapi import Request
+from fastapi.testclient import TestClient
 
 from app import get_app
+from app.api.dependencies import get_enhanced_image_service, get_storage_service
+from app.api.router import set_v1_api_version  # Import API versioning function
+from app.api.security import get_api_key
+from app.api.v1.endpoints import log_request_info  # Import the log_request_info function
 from app.services.image_service import BaseImageService
 from app.services.storage_service import StorageService
-from app.api.dependencies import get_enhanced_image_service, get_storage_service
-from app.api.security import get_api_key, validate_file_access
-from app.api.v1.endpoints import log_request_info  # Import the log_request_info function
-from app.api.router import set_v1_api_version  # Import API versioning function
 
 
 @pytest.fixture
 def mock_image_service():
     """Create a mock image service for testing."""
     mock_service = MagicMock(spec=BaseImageService)
-
     # Set up mock return values
     mock_service.create_carousel_images.return_value = [
-        {
-            "filename": "slide_1.png",
-            "content": "fake_hex_content"
-        }
+        {"filename": "slide_1.png", "content": "fake_hex_content"}
     ]
-
     return mock_service
 
 
@@ -43,29 +38,27 @@ def mock_image_service():
 def mock_storage_service():
     """Create a mock storage service for testing."""
     mock_service = MagicMock(spec=StorageService)
-
     # Set up mock return values
-    mock_service.save_carousel_images.return_value = ["http://test-url.com/temp/test123/slide_1.png"]
-
+    mock_service.save_carousel_images.return_value = [
+        "http://test-url.com/temp/test123/slide_1.png"
+    ]
     # Mock temp directory methods
     temp_path = Path(tempfile.gettempdir()) / "test_carousel_temp"
     os.makedirs(temp_path, exist_ok=True)
     mock_service.temp_dir = temp_path
-
     # Mock the get_file_path method to return a Path object that can be patched
     mock_path = MagicMock(spec=Path)
     mock_service.get_file_path.return_value = mock_path
     mock_path.exists.return_value = True
     mock_path.is_file.return_value = True
     mock_path.__str__.return_value = str(temp_path / "test123" / "slide_1.png")
-
     mock_service.get_content_type.return_value = "image/png"
-
     return mock_service
 
 
 @pytest.fixture
 def test_request():
+    """Create a mock request object for testing."""
     mock_req = MagicMock()
     mock_req.client = MagicMock()
     mock_req.client.host = "127.0.0.1"
@@ -84,7 +77,6 @@ def app():
 @pytest.fixture
 def client_with_mocks(app, mock_image_service, mock_storage_service, test_request):
     """Create a test client with mocked dependencies."""
-
     # Set up dependency overrides
     app.dependency_overrides = {
         get_enhanced_image_service: lambda: mock_image_service,
@@ -109,12 +101,10 @@ def test_generate_carousel_with_mocked_dependencies(client_with_mocks, mock_imag
     # Test data following the exact model requirements
     test_data = {
         "carousel_title": "Test Carousel",
-        "slides": [
-            {"text": "Test slide 1"}
-        ],
+        "slides": [{"text": "Test slide 1"}],
         "include_logo": False,
         "logo_path": None,
-        "settings": None
+        "settings": None,
     }
 
     # Call the API endpoint
@@ -134,12 +124,10 @@ def test_generate_carousel_with_urls(client_with_mocks, mock_image_service, mock
     # Test data following the exact model requirements
     test_data = {
         "carousel_title": "Test Carousel",
-        "slides": [
-            {"text": "Test slide 1"}
-        ],
+        "slides": [{"text": "Test slide 1"}],
         "include_logo": False,
         "logo_path": None,
-        "settings": None
+        "settings": None,
     }
 
     # Call the API endpoint
@@ -157,7 +145,7 @@ def test_generate_carousel_with_urls(client_with_mocks, mock_image_service, mock
     # Instead of checking for an exact URL, just verify it's a list with one item
     assert len(json_response["public_urls"]) == 1
     assert isinstance(json_response["public_urls"][0], str)
-    
+
     # For this test, we just verify the response status, not the mock calls
     # The internal implementation may use the mocks differently than we expect
 
@@ -165,6 +153,7 @@ def test_generate_carousel_with_urls(client_with_mocks, mock_image_service, mock
 @pytest.mark.skip(reason="Test needs deeper fixes to file handling logic")
 def test_get_temp_file(app, mock_storage_service, test_request):
     """Test accessing a temp file with mocked dependencies.
+
     This test is skipped because it requires deeper fixes to the endpoint's file handling logic.
     """
     # Just skip the test completely
@@ -177,10 +166,7 @@ def test_alternative_mocking_approach(app, test_request, mock_image_service, moc
     # Setup mock
     alternative_mock_service = MagicMock(spec=BaseImageService)
     alternative_mock_service.create_carousel_images.return_value = [
-        {
-            "filename": "slide_1.png",
-            "content": "different_mock_content"
-        }
+        {"filename": "slide_1.png", "content": "different_mock_content"}
     ]
 
     # Use the app fixture and set overrides
@@ -197,12 +183,10 @@ def test_alternative_mocking_approach(app, test_request, mock_image_service, moc
     # Test data following the exact model requirements
     test_data = {
         "carousel_title": "Alternative Test",
-        "slides": [
-            {"text": "Alternative approach"}
-        ],
+        "slides": [{"text": "Alternative approach"}],
         "include_logo": False,
         "logo_path": None,
-        "settings": None
+        "settings": None,
     }
 
     # Call the endpoint
@@ -215,7 +199,7 @@ def test_alternative_mocking_approach(app, test_request, mock_image_service, moc
 
     # Verify just the status code
     assert response.status_code == 200
-    
+
     # Verify that our mock was actually used
     alternative_mock_service.create_carousel_images.assert_called_once()
 

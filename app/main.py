@@ -3,22 +3,21 @@ Main module for the Instagram Carousel Generator API.
 
 This module provides the FastAPI application setup and server entry point.
 """
-
 import logging
-import os
 import sys
-from contextlib import asynccontextmanager
-import uvicorn
-from fastapi import FastAPI, Request, Depends
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, JSONResponse
-from datetime import datetime
 import time
+from contextlib import asynccontextmanager
+from datetime import datetime
 
+import uvicorn
+from fastapi import Depends, FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+
+from app.api.security import get_api_key, rate_limit
 from app.core.config import settings
 from app.services.storage_service import StorageService
-from app.api.security import get_api_key, rate_limit, validate_file_access
 
 # Configure logging
 logging.basicConfig(
@@ -45,12 +44,13 @@ async def lifespan(app: FastAPI):
     """
     # Startup logic
     logger.info("Starting Instagram Carousel Generator API")
-    
+
     # Initialize the dependency injection system
     from app.core.services_setup import register_services
+
     register_services()
     logger.info("Service registry initialized")
-    
+
     # Clean up old files
     storage_service.cleanup_old_files()
 
@@ -69,24 +69,26 @@ def create_app() -> FastAPI:
     """
     # Initialize the dependency injection system
     from app.core.services_setup import register_services
+
     register_services()
-    
+
     # Create the FastAPI app with proper configuration
     app = FastAPI(
         title=settings.PROJECT_NAME,
         description="""
         API for generating Instagram carousel images with consistent styling.
-        
+
         ## API Versioning
-        
-        This API uses URL-based versioning (e.g., `/api/v1/...`). 
+
+        This API uses URL-based versioning (e.g., `/api/v1/...`).
         Always include the version in your API requests to ensure compatibility.
-        
+
         - Current version: v1
-        - For more information about versioning, see the `/api-info` endpoint or visit our [API Versioning Guide](/docs#section/Versioning).
-        
+        - For more information about versioning, see the `/api-info` endpoint or visit our
+        [API Versioning Guide](/docs#section/Versioning).
+
         ## Dependency Injection
-        
+
         This API uses dependency injection for service management, which makes components more
         modular, testable, and extensible. See our dependency injection guide in the documentation
         for more details.
@@ -114,7 +116,7 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def api_version_middleware(request: Request, call_next):
-        """Middleware for managing API versioning notices"""
+        """Middleware for managing API versioning notices."""
         return await version_middleware(request, call_next)
 
     # Middleware to ensure UTF-8 encoding for all responses
@@ -142,7 +144,7 @@ def create_app() -> FastAPI:
 
         # Log request details
         logger.info(
-            f"Request: {request.method} {request.url.path} | " 
+            f"Request: {request.method} {request.url.path} | "
             f"Client: {client_host} | "
             f"Status: {response.status_code} | "
             f"Time: {process_time:.3f}s"
@@ -159,7 +161,7 @@ def create_app() -> FastAPI:
     # Health check endpoint (no authentication required)
     @app.get("/health", tags=["health"])
     async def health_check():
-        """Simple health check endpoint"""
+        """Generate health check endpoint."""
         return {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
@@ -169,7 +171,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api-info", tags=["versioning"])
     async def api_info():
-        """Get API version information"""
+        """Get API version information."""
         from app.api.middleware import get_all_versions, get_latest_version
 
         return {
@@ -193,7 +195,7 @@ def create_app() -> FastAPI:
     app.include_router(
         api_router,
         prefix=settings.API_PREFIX,  # Only use the prefix without version
-        dependencies=[Depends(get_api_key), Depends(rate_limit())]
+        dependencies=[Depends(get_api_key), Depends(rate_limit())],
     )
 
     return app
@@ -201,7 +203,6 @@ def create_app() -> FastAPI:
 
 def run_app():
     """Run the FastAPI application with uvicorn."""
-    app = create_app()
     uvicorn.run(
         "app.main:create_app",
         host=settings.HOST,

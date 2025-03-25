@@ -4,36 +4,47 @@ Pytest configuration file providing common fixtures for tests.
 This module defines fixtures that can be used across all test files,
 promoting test modularity and reducing code duplication.
 """
-
-import pytest
+import logging
 import os
 import tempfile
 import time
-import json
-import logging
-from unittest.mock import MagicMock, patch
-from fastapi.testclient import TestClient
-from fastapi import Request, FastAPI
 from pathlib import Path
-from typing import Dict, Any, List, Generator, Optional
+from typing import Any, Dict, Generator
+from unittest.mock import MagicMock
+
+import pytest
+from fastapi import FastAPI, Request
+from fastapi.testclient import TestClient
+
+from app.api.dependencies import (
+    get_api_key,
+    get_enhanced_image_service,
+    get_storage_service,
+    log_request_info,
+    set_v1_api_version,
+)
+from app.core.models import CarouselRequest
+from app.services.image_service import BaseImageService, ImageServiceType, get_image_service
 
 # We need to import the StorageService class directly,
 # not from app.main which can cause circular imports
 from app.services.storage_service import StorageService
-from app.services.image_service import get_image_service, ImageServiceType, BaseImageService
-from app.api.dependencies import (
-    get_enhanced_image_service, 
-    get_storage_service, 
-    get_api_key,
-    log_request_info,
-    set_v1_api_version
-)
-from app.core.models import CarouselRequest
 
 
 # Import create_app directly to avoid circular dependencies
 def get_app():
+    """
+    Get the FastAPI application instance.
+
+    This function is a convenience wrapper that imports and returns the
+    application instance created by app.main.create_app(). It helps avoid
+    circular imports when the application needs to be referenced.
+
+    Returns:
+        FastAPI: The configured FastAPI application instance
+    """
     from app.main import create_app
+
     return create_app()
 
 
@@ -42,7 +53,7 @@ def get_app():
 def app() -> FastAPI:
     """
     Create a test app instance.
-    
+
     Returns:
         FastAPI: The FastAPI application instance
     """
@@ -53,10 +64,10 @@ def app() -> FastAPI:
 def client(app: FastAPI) -> TestClient:
     """
     Create a test client for the app.
-    
+
     Args:
         app: The FastAPI application
-        
+
     Returns:
         TestClient: A FastAPI test client
     """
@@ -68,7 +79,7 @@ def client(app: FastAPI) -> TestClient:
 def temp_dir() -> Generator[str, None, None]:
     """
     Create a temporary directory for tests.
-    
+
     Yields:
         str: Path to the temporary directory
     """
@@ -80,7 +91,7 @@ def temp_dir() -> Generator[str, None, None]:
 def temp_file() -> Generator[str, None, None]:
     """
     Create a temporary file for tests.
-    
+
     Yields:
         str: Path to the temporary file
     """
@@ -96,10 +107,10 @@ def temp_file() -> Generator[str, None, None]:
 def storage_service(temp_dir: str) -> StorageService:
     """
     Create a storage service instance for tests.
-    
+
     Args:
         temp_dir: Path to a temporary directory
-        
+
     Returns:
         StorageService: A configured storage service
     """
@@ -112,17 +123,17 @@ def storage_service(temp_dir: str) -> StorageService:
 def standard_image_service() -> BaseImageService:
     """
     Fixture to provide a standard image service for tests.
-    
+
     Returns:
         BaseImageService: A standard image service instance
     """
     settings = {
-        'width': 500,  # Smaller size for faster tests
-        'height': 500,
-        'bg_color': (18, 18, 18),
-        'title_font': 'Arial.ttf',
-        'text_font': 'Arial.ttf',
-        'nav_font': 'Arial.ttf'
+        "width": 500,  # Smaller size for faster tests
+        "height": 500,
+        "bg_color": (18, 18, 18),
+        "title_font": "Arial.ttf",
+        "text_font": "Arial.ttf",
+        "nav_font": "Arial.ttf",
     }
     return get_image_service(ImageServiceType.STANDARD.value, settings)
 
@@ -131,17 +142,17 @@ def standard_image_service() -> BaseImageService:
 def enhanced_image_service() -> BaseImageService:
     """
     Fixture to provide an enhanced image service for tests.
-    
+
     Returns:
         BaseImageService: An enhanced image service instance
     """
     settings = {
-        'width': 500,  # Smaller size for faster tests
-        'height': 500,
-        'bg_color': (18, 18, 18),
-        'title_font': 'Arial.ttf',
-        'text_font': 'Arial.ttf',
-        'nav_font': 'Arial.ttf'
+        "width": 500,  # Smaller size for faster tests
+        "height": 500,
+        "bg_color": (18, 18, 18),
+        "title_font": "Arial.ttf",
+        "text_font": "Arial.ttf",
+        "nav_font": "Arial.ttf",
     }
     return get_image_service(ImageServiceType.ENHANCED.value, settings)
 
@@ -151,7 +162,7 @@ def enhanced_image_service() -> BaseImageService:
 def mock_image_service() -> MagicMock:
     """
     Create a mock image service for testing.
-    
+
     Returns:
         MagicMock: A mock image service
     """
@@ -159,12 +170,9 @@ def mock_image_service() -> MagicMock:
 
     # Set up mock return values
     mock_service.create_carousel_images.return_value = [
-        {
-            "filename": "slide_1.png",
-            "content": "fake_hex_content"
-        }
+        {"filename": "slide_1.png", "content": "fake_hex_content"}
     ]
-    
+
     # Add additional common mock methods
     mock_service.create_slide_image.return_value = MagicMock()  # Returns a mock PIL Image
     mock_service.create_error_slide.return_value = MagicMock()  # Returns a mock PIL Image
@@ -177,17 +185,19 @@ def mock_image_service() -> MagicMock:
 def mock_storage_service(temp_dir: str) -> MagicMock:
     """
     Create a mock storage service for testing.
-    
+
     Args:
         temp_dir: Path to a temporary directory
-        
+
     Returns:
         MagicMock: A mock storage service
     """
     mock_service = MagicMock(spec=StorageService)
 
     # Set up mock return values
-    mock_service.save_carousel_images.return_value = ["http://test-url.com/temp/test123/slide_1.png"]
+    mock_service.save_carousel_images.return_value = [
+        "http://test-url.com/temp/test123/slide_1.png"
+    ]
 
     # Mock temp directory methods
     temp_path = Path(temp_dir)
@@ -200,11 +210,11 @@ def mock_storage_service(temp_dir: str) -> MagicMock:
     mock_path.exists.return_value = True
     mock_path.is_file.return_value = True
     mock_path.__str__.return_value = str(temp_path / "test123" / "slide_1.png")
-    
+
     # Additional commonly used methods
     mock_service.get_content_type.return_value = "image/png"
     mock_service.schedule_cleanup.return_value = None
-    
+
     return mock_service
 
 
@@ -212,7 +222,7 @@ def mock_storage_service(temp_dir: str) -> MagicMock:
 def test_request() -> MagicMock:
     """
     Create a mock request object for testing.
-    
+
     Returns:
         MagicMock: A mock FastAPI Request object
     """
@@ -223,29 +233,29 @@ def test_request() -> MagicMock:
     mock_req.url = MagicMock()
     mock_req.url.path = "/api/v1/test"
     mock_req.state = MagicMock()
-    
+
     return mock_req
 
 
 @pytest.fixture
 def client_with_mocks(
-    app: FastAPI, 
-    mock_image_service: MagicMock, 
-    mock_storage_service: MagicMock, 
-    test_request: MagicMock
+    app: FastAPI,
+    mock_image_service: MagicMock,
+    mock_storage_service: MagicMock,
+    test_request: MagicMock,
 ) -> TestClient:
     """
     Create a test client with mocked dependencies.
-    
+
     This fixture sets up a FastAPI test client with all key
     dependencies mocked for isolated testing of endpoints.
-    
+
     Args:
         app: The FastAPI application
         mock_image_service: A mock image service
         mock_storage_service: A mock storage service
         test_request: A mock request object
-        
+
     Returns:
         TestClient: A FastAPI test client with dependency overrides
     """
@@ -255,8 +265,10 @@ def client_with_mocks(
         get_storage_service: lambda: mock_storage_service,
         get_api_key: lambda: True,
         # Create async mocks for async dependencies
-        log_request_info: lambda *args, **kwargs: time.time(),  # Mock the request logging dependency
-        Request: lambda *args, **kwargs: test_request,  # Mock the Request dependency to fix routing issues
+        # Mock the request logging dependency
+        log_request_info: lambda *args, **kwargs: time.time(),
+        # Mock the Request dependency to fix routing issues
+        Request: lambda *args, **kwargs: test_request,
         set_v1_api_version: lambda *args, **kwargs: None,  # Mock API versioning function
     }
 
@@ -274,17 +286,17 @@ def client_with_mocks(
 def test_settings() -> Dict[str, Any]:
     """
     Test settings for services.
-    
+
     Returns:
         Dict[str, Any]: A dictionary of test settings
     """
     return {
-        'width': 500,
-        'height': 500,
-        'bg_color': (18, 18, 18),
-        'title_font': 'Arial.ttf',
-        'text_font': 'Arial.ttf',
-        'nav_font': 'Arial.ttf'
+        "width": 500,
+        "height": 500,
+        "bg_color": (18, 18, 18),
+        "title_font": "Arial.ttf",
+        "text_font": "Arial.ttf",
+        "nav_font": "Arial.ttf",
     }
 
 
@@ -292,20 +304,17 @@ def test_settings() -> Dict[str, Any]:
 def test_image() -> Dict[str, Any]:
     """
     Create test image data.
-    
+
     Returns:
         Dict[str, Any]: Test image data dictionary
     """
     return {
-        'carousel_id': 'test123',
-        'carousel_title': 'Test Carousel',
-        'slides': [
-            {'text': 'This is slide 1'},
-            {'text': 'This is slide 2'}
-        ],
-        'include_logo': False,
-        'logo_path': None,
-        'settings': None
+        "carousel_id": "test123",
+        "carousel_title": "Test Carousel",
+        "slides": [{"text": "This is slide 1"}, {"text": "This is slide 2"}],
+        "include_logo": False,
+        "logo_path": None,
+        "settings": None,
     }
 
 
@@ -313,19 +322,16 @@ def test_image() -> Dict[str, Any]:
 def carousel_request_data() -> Dict[str, Any]:
     """
     Create test carousel request data that matches the CarouselRequest model.
-    
+
     Returns:
         Dict[str, Any]: A dictionary of carousel request data
     """
     return {
-        'carousel_title': 'Test Carousel',
-        'slides': [
-            {'text': 'This is slide 1'},
-            {'text': 'This is slide 2'}
-        ],
-        'include_logo': False,
-        'logo_path': None,
-        'settings': None
+        "carousel_title": "Test Carousel",
+        "slides": [{"text": "This is slide 1"}, {"text": "This is slide 2"}],
+        "include_logo": False,
+        "logo_path": None,
+        "settings": None,
     }
 
 
@@ -333,10 +339,10 @@ def carousel_request_data() -> Dict[str, Any]:
 def carousel_request(carousel_request_data: Dict[str, Any]) -> CarouselRequest:
     """
     Create a CarouselRequest model instance for testing.
-    
+
     Args:
         carousel_request_data: Dictionary of carousel request data
-        
+
     Returns:
         CarouselRequest: A CarouselRequest model instance
     """
@@ -348,16 +354,16 @@ def carousel_request(carousel_request_data: Dict[str, Any]) -> CarouselRequest:
 def configure_test_logging():
     """
     Configure logging for tests.
-    
+
     This fixture is automatically used in all tests to configure
     logging appropriately for the test environment.
     """
     # Set up logging to console with a reasonable level
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    
+
     # Optionally reduce noise from third-party libraries
-    logging.getLogger('httpx').setLevel(logging.WARNING)
-    logging.getLogger('urllib3').setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)

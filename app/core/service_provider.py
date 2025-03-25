@@ -5,15 +5,13 @@ This module acts as a service provider/container for implementing dependency inj
 It provides a central place for registering and retrieving service instances,
 making it easier to manage service lifecycles and dependencies.
 """
-
-from typing import Dict, Any, Type, Callable, TypeVar, Optional, cast
-import inspect
 import logging
+from typing import Any, Callable, Dict, Optional, Type, TypeVar, cast
 
 logger = logging.getLogger(__name__)
 
 # Type variable for service types
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class ServiceProvider:
@@ -29,8 +27,7 @@ class ServiceProvider:
         self._services: Dict[Type, Dict[str, Any]] = {}
         self._instances: Dict[Type, Dict[str, Any]] = {}
 
-    def register(self, service_type: Type[T], factory: Callable[[], T],
-                 singleton: bool = True):
+    def register(self, service_type: Type[T], factory: Callable[[], T], singleton: bool = True):
         """
         Register a service with the provider.
 
@@ -45,12 +42,11 @@ class ServiceProvider:
             self._services[service_type] = {}
 
         self._services[service_type][service_key] = {
-            'factory': factory,
-            'singleton': singleton
+            "factory": factory,
+            "singleton": singleton,
         }
 
-        logger.debug(
-            f"Registered service: {service_key} (singleton={singleton})")
+        logger.debug(f"Registered service: {service_key} (singleton={singleton})")
 
     def register_instance(self, service_type: Type[T], instance: T):
         """
@@ -85,18 +81,16 @@ class ServiceProvider:
         service_key = key or service_type.__name__
 
         # Check if we already have an instance (singleton case)
-        if service_type in self._instances and service_key in self._instances[
-            service_type]:
+        if service_type in self._instances and service_key in self._instances[service_type]:
             return cast(T, self._instances[service_type][service_key])
 
         # Check if we have a registration for this service
-        if service_type in self._services and service_key in self._services[
-            service_type]:
+        if service_type in self._services and service_key in self._services[service_type]:
             service_info = self._services[service_type][service_key]
-            instance = service_info['factory']()
+            instance = service_info["factory"]()
 
             # If singleton, store the instance
-            if service_info['singleton']:
+            if service_info["singleton"]:
                 if service_type not in self._instances:
                     self._instances[service_type] = {}
                 self._instances[service_type][service_key] = instance

@@ -1,40 +1,44 @@
-from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Tuple, Optional
-from PIL import Image, ImageDraw, ImageFont
-import os
+"""
+Base image service module for the Instagram Carousel Generator.
+
+This module provides the abstract base class and common functionality for
+image service implementations, which handle the creation of carousel images
+with consistent styling.
+"""
 import logging
+import os
 import tempfile
-import uuid
-import unicodedata
 import time
+import unicodedata
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Tuple
+
+from PIL import Image, ImageDraw, ImageFont
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
 
 class ImageServiceError(Exception):
-    """Base exception class for image service errors"""
-    pass
+    """Base exception class for image service errors."""
 
 
 class ImageCreationError(ImageServiceError):
-    """Exception raised when there's an error creating an image"""
-    pass
+    """Exception raised when there's an error creating an image."""
 
 
 class FontLoadError(ImageServiceError):
-    """Exception raised when there's an error loading a font"""
-    pass
+    """Exception raised when there's an error loading a font."""
 
 
 class TextRenderingError(ImageServiceError):
-    """Exception raised when there's an error rendering text"""
-    pass
+    """Exception raised when there's an error rendering text."""
 
 
 class BaseImageService(ABC):
     """
     Base abstract class for image service implementations.
+
     Defines the core interface and common utility methods.
     """
 
@@ -46,14 +50,12 @@ class BaseImageService(ABC):
             settings: Dictionary containing settings for image generation
         """
         self.settings = settings or {}
-        self.default_width = self.settings.get('width', 1080)
-        self.default_height = self.settings.get('height', 1080)
-        self.default_bg_color = self.settings.get('bg_color', (18, 18, 18))
-        self.default_font = self.settings.get('font', 'Arial.ttf')
-        self.default_font_bold = self.settings.get('font_bold',
-                                                   'Arial Bold.ttf')
-        self.default_text_color = self.settings.get('text_color',
-                                                    (255, 255, 255))
+        self.default_width = self.settings.get("width", 1080)
+        self.default_height = self.settings.get("height", 1080)
+        self.default_bg_color = self.settings.get("bg_color", (18, 18, 18))
+        self.default_font = self.settings.get("font", "Arial.ttf")
+        self.default_font_bold = self.settings.get("font_bold", "Arial Bold.ttf")
+        self.default_text_color = self.settings.get("text_color", (255, 255, 255))
 
     def sanitize_text(self, text: str) -> str:
         """
@@ -61,46 +63,40 @@ class BaseImageService(ABC):
 
         Args:
             text: The text to sanitize
-
         Returns:
             Sanitized text
         """
         if text is None:
             return ""
-
         # Convert to string if not already
         if not isinstance(text, str):
             text = str(text)
-
         # Replace specific problematic characters
         replacements = {
-            '\u2192': '->',  # Right arrow
-            '\u2190': '<-',  # Left arrow
-            '\u2191': '^',  # Up arrow
-            '\u2193': 'v',  # Down arrow
-            '\u2018': "'",  # Left single quote
-            '\u2019': "'",  # Right single quote
-            '\u201C': '"',  # Left double quote
-            '\u201D': '"',  # Right double quote
-            '\u2013': '-',  # En dash
-            '\u2014': '-',  # Em dash
-            '\u2026': '...',  # Ellipsis
+            "\u2192": "->",  # Right arrow
+            "\u2190": "<-",  # Left arrow
+            "\u2191": "^",  # Up arrow
+            "\u2193": "v",  # Down arrow
+            "\u2018": "'",  # Left single quote
+            "\u2019": "'",  # Right single quote
+            "\u201C": '"',  # Left double quote
+            "\u201D": '"',  # Right double quote
+            "\u2013": "-",  # En dash
+            "\u2014": "-",  # Em dash
+            "\u2026": "...",  # Ellipsis
         }
-
         for char, replacement in replacements.items():
             text = text.replace(char, replacement)
-
         # Normalize Unicode (NFKD = compatibility decomposition)
-        text = unicodedata.normalize('NFKD', text)
-
+        text = unicodedata.normalize("NFKD", text)
         # Keep only ASCII characters if specified in settings
-        if self.settings.get('ascii_only', False):
-            text = ''.join(c for c in text if ord(c) < 128)
-
+        if self.settings.get("ascii_only", False):
+            text = "".join(c for c in text if ord(c) < 128)
         return text
 
-    def safe_load_font(self, font_path: str, size: int, fallback_size: Optional[
-        int] = None) -> ImageFont.FreeTypeFont:
+    def safe_load_font(
+        self, font_path: str, size: int, fallback_size: Optional[int] = None
+    ) -> ImageFont.FreeTypeFont:
         """
         Safely load a font with fallbacks.
 
@@ -108,29 +104,31 @@ class BaseImageService(ABC):
             font_path: Path to the font file
             size: Desired font size
             fallback_size: Optional alternative size for fallback
-
         Returns:
             PIL ImageFont object
-
         Raises:
             FontLoadError: If font cannot be loaded
         """
         try:
             return ImageFont.truetype(font_path, size)
         except (IOError, OSError) as e:
-            logger.warning(
-                f"Could not load font {font_path} at size {size}: {e}")
+            logger.warning(f"Could not load font {font_path} at size {size}: {e}")
             try:
                 # Try loading a common system font
-                for system_font in ['Arial.ttf', 'DejaVuSans.ttf',
-                                    'FreeSans.ttf',
-                                    'LiberationSans-Regular.ttf']:
+                for system_font in [
+                    "Arial.ttf",
+                    "DejaVuSans.ttf",
+                    "FreeSans.ttf",
+                    "LiberationSans-Regular.ttf",
+                ]:
                     try:
-                        return ImageFont.truetype(system_font,
-                                                  size if fallback_size is None else fallback_size)
-                    except:
+                        return ImageFont.truetype(
+                            system_font,
+                            size if fallback_size is None else fallback_size,
+                        )
+                    except Exception as e:
+                        logger.error(f"Error with text fallback {e}")
                         continue
-
                 # If all else fails, use default
                 return ImageFont.load_default()
             except Exception as e:
@@ -139,13 +137,13 @@ class BaseImageService(ABC):
 
     @abstractmethod
     def create_slide_image(
-            self,
-            title: str,
-            text: str,
-            slide_number: int,
-            total_slides: int,
-            include_logo: bool = False,
-            logo_path: str = None
+        self,
+        title: str,
+        text: str,
+        slide_number: int,
+        total_slides: int,
+        include_logo: bool = False,
+        logo_path: str = None,
     ) -> Image.Image:
         """
         Create an Instagram carousel slide with the specified styling.
@@ -157,21 +155,19 @@ class BaseImageService(ABC):
             total_slides: Total number of slides
             include_logo: Whether to include a logo
             logo_path: Path to the logo file
-
         Returns:
             PIL Image object
         """
-        pass
 
     @abstractmethod
     def create_gradient_text(
-            self,
-            draw: ImageDraw.Draw,
-            text: str,
-            position: Tuple[int, int],
-            font,
-            width: int,
-            colors: List[Tuple[int, int, int]] = None
+        self,
+        draw: ImageDraw.Draw,
+        text: str,
+        position: Tuple[int, int],
+        font,
+        width: int,
+        colors: List[Tuple[int, int, int]] = None,
     ) -> Tuple[Image.Image, Tuple[int, int]]:
         """
         Create gradient text from one color to another.
@@ -183,18 +179,13 @@ class BaseImageService(ABC):
             font: Font to use
             width: Width of the image
             colors: List of (r, g, b) tuples for gradient start and end
-
         Returns:
             Tuple of (gradient_text_image, position)
         """
-        pass
 
     @abstractmethod
     def create_error_slide(
-            self,
-            slide_number: int,
-            total_slides: int,
-            error_message: str
+        self, slide_number: int, total_slides: int, error_message: str
     ) -> Image.Image:
         """
         Create an error slide to display when there's a problem generating a slide.
@@ -203,19 +194,17 @@ class BaseImageService(ABC):
             slide_number: Current slide number
             total_slides: Total number of slides
             error_message: Error message to display
-
         Returns:
             PIL Image object
         """
-        pass
 
     def create_carousel_images(
-            self,
-            carousel_title: str,
-            slides_data: List[Dict[str, str]],
-            carousel_id: str,
-            include_logo: bool = False,
-            logo_path: str = None
+        self,
+        carousel_title: str,
+        slides_data: List[Dict[str, str]],
+        carousel_id: str,
+        include_logo: bool = False,
+        logo_path: str = None,
     ) -> List[Dict[str, Any]]:
         """
         Create carousel images for Instagram based on text content.
@@ -245,27 +234,28 @@ class BaseImageService(ABC):
                 carousel_id,
                 include_logo,
                 logo_path,
-                temp_dir
+                temp_dir,
             )
 
             # Log performance metrics
             generation_time = time.time() - start_time
             logger.info(
-                f"Carousel generation completed in {generation_time:.2f} seconds with {len(image_files)} slides"
+                f"Carousel generation completed in {generation_time:.2f} seconds with "
+                f"{len(image_files)} slides"
             )
 
             return image_files
 
     def _generate_all_slides(
-            self,
-            carousel_title: str,
-            slides_data: List[Dict[str, str]],
-            carousel_id: str,
-            include_logo: bool,
-            logo_path: str,
-            temp_dir: str
+        self,
+        carousel_title: str,
+        slides_data: List[Dict[str, str]],
+        carousel_id: str,
+        include_logo: bool,
+        logo_path: str,
+        temp_dir: str,
     ) -> List[Dict[str, Any]]:
-        """Generate all slides for the carousel and store them in temporary directory"""
+        """Generate all slides for the carousel and store them in temporary directory."""
         image_files = []
         total_slides = len(slides_data)
 
@@ -282,7 +272,7 @@ class BaseImageService(ABC):
                     total_slides,
                     include_logo,
                     logo_path,
-                    temp_dir
+                    temp_dir,
                 )
                 image_files.append(slide_result)
                 logger.info(f"Slide {slide_number} generated successfully")
@@ -299,18 +289,18 @@ class BaseImageService(ABC):
         return image_files
 
     def _process_single_slide(
-            self,
-            title: Optional[str],
-            slide: Dict[str, str],
-            slide_number: int,
-            total_slides: int,
-            include_logo: bool,
-            logo_path: str,
-            temp_dir: str
+        self,
+        title: Optional[str],
+        slide: Dict[str, str],
+        slide_number: int,
+        total_slides: int,
+        include_logo: bool,
+        logo_path: str,
+        temp_dir: str,
     ) -> Dict[str, Any]:
-        """Process and generate a single carousel slide"""
+        """Process and generate a single carousel slide."""
         # Get slide text
-        slide_text = slide.get('text', '')
+        slide_text = slide.get("text", "")
         if not isinstance(slide_text, str):
             slide_text = str(slide_text)
 
@@ -318,43 +308,26 @@ class BaseImageService(ABC):
 
         # Create image
         img = self.create_slide_image(
-            title,
-            slide_text,
-            slide_number,
-            total_slides,
-            include_logo,
-            logo_path
+            title, slide_text, slide_number, total_slides, include_logo, logo_path
         )
 
         # Create result dictionary
         return self._save_slide_to_file(img, slide_number, temp_dir)
 
     def _create_error_slide_file(
-            self,
-            slide_number: int,
-            total_slides: int,
-            error_message: str,
-            temp_dir: str
+        self, slide_number: int, total_slides: int, error_message: str, temp_dir: str
     ) -> Dict[str, Any]:
-        """Create an error slide and save it to file"""
+        """Create an error slide and save it to file."""
         # Create an error slide
-        error_img = self.create_error_slide(
-            slide_number, total_slides, error_message
-        )
+        error_img = self.create_error_slide(slide_number, total_slides, error_message)
 
         # Save as error slide
-        return self._save_slide_to_file(
-            error_img, slide_number, temp_dir, is_error=True
-        )
+        return self._save_slide_to_file(error_img, slide_number, temp_dir, is_error=True)
 
     def _save_slide_to_file(
-            self,
-            img: Image.Image,
-            slide_number: int,
-            temp_dir: str,
-            is_error: bool = False
+        self, img: Image.Image, slide_number: int, temp_dir: str, is_error: bool = False
     ) -> Dict[str, Any]:
-        """Save a slide image to file and return the metadata"""
+        """Save a slide image to file and return the metadata."""
         # Determine filename
         filename_suffix = "_error" if is_error else ""
         filename = f"slide_{slide_number}{filename_suffix}.png"
@@ -370,5 +343,5 @@ class BaseImageService(ABC):
         # Return metadata
         return {
             "filename": filename,
-            "content": file_content.hex()  # Convert binary to hex for JSON
+            "content": file_content.hex(),  # Convert binary to hex for JSON
         }

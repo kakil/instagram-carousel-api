@@ -4,12 +4,12 @@ Middleware for API versioning in the Instagram Carousel Generator.
 This module provides middleware for managing API version compatibility,
 including version deprecation notices and compatibility warnings.
 """
+import logging
+import re
+from datetime import date
+from typing import Awaitable, Callable, Dict, List, Optional
 
 from fastapi import Request
-import re
-import logging
-from datetime import datetime, date
-from typing import Dict, Callable, Awaitable, Optional, List, Tuple
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -41,10 +41,7 @@ VERSION_INFO = {
 # },
 
 
-async def version_middleware(
-        request: Request,
-        call_next: Callable[[Request], Awaitable]
-):
+async def version_middleware(request: Request, call_next: Callable[[Request], Awaitable]):
     """
     Middleware to handle API version deprecation and sunset notices.
 
@@ -56,11 +53,11 @@ async def version_middleware(
         Response from the next middleware or endpoint handler
     """
     # Extract version from path if possible using regex
-    version_pattern = r'/api/(?P<version>v\d+)/'
+    version_pattern = r"/api/(?P<version>v\d+)/"
     match = re.search(version_pattern, request.url.path)
 
     if match:
-        version = match.group('version')
+        version = match.group("version")
 
         # Check if this version exists in our VERSION_INFO
         if version in VERSION_INFO:
@@ -77,20 +74,17 @@ async def version_middleware(
                     response.headers["Sunset"] = sunset_date.isoformat()
 
                 # Add deprecation notice
-                response.headers["Deprecation"] = version_data[
-                    "deprecated"].isoformat()
+                response.headers["Deprecation"] = version_data["deprecated"].isoformat()
 
                 # Add Link header with info about the latest version
                 latest_version = next(
-                    (v for v, info in VERSION_INFO.items() if
-                     info.get("latest")),
-                    None
+                    (v for v, info in VERSION_INFO.items() if info.get("latest")), None
                 )
 
                 if latest_version:
                     # Point to the documentation for the latest version
                     response.headers["Link"] = (
-                        f'</docs#tag/{latest_version}-endpoints>; '
+                        f"</docs#tag/{latest_version}-endpoints>; "
                         'rel="alternate"; '
                         'title="Latest API version"'
                     )
@@ -99,9 +93,7 @@ async def version_middleware(
             # add a suggestion header
             elif not version_data.get("latest"):
                 latest_version = next(
-                    (v for v, info in VERSION_INFO.items() if
-                     info.get("latest")),
-                    None
+                    (v for v, info in VERSION_INFO.items() if info.get("latest")), None
                 )
 
                 if latest_version:
@@ -126,9 +118,9 @@ def get_all_versions() -> List[Dict]:
         version_data = {
             "version": version,
             "introduced": info["introduced"].isoformat(),
-            "status": "current" if info.get("latest") else (
-                "deprecated" if info.get("deprecated") else "supported"
-            ),
+            "status": "current"
+            if info.get("latest")
+            else ("deprecated" if info.get("deprecated") else "supported"),
         }
 
         if info.get("deprecated"):

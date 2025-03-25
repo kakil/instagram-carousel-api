@@ -4,15 +4,15 @@ API security middleware and dependencies for Instagram Carousel Generator.
 This module provides security-related middleware and dependencies for FastAPI,
 including API key authentication, rate limiting, and request validation.
 """
-
-from fastapi import Request, HTTPException, Depends, Security
-from fastapi.security.api_key import APIKeyHeader, APIKeyQuery
-from starlette.status import HTTP_403_FORBIDDEN, HTTP_429_TOO_MANY_REQUESTS
-import time
-from typing import Optional, Dict, Callable, List
 import logging
 import re
-from datetime import datetime, timedelta
+import time
+from typing import Callable, Dict, List
+
+from fastapi import HTTPException, Request, Security
+from fastapi.security.api_key import APIKeyHeader, APIKeyQuery
+from starlette.status import HTTP_403_FORBIDDEN, HTTP_429_TOO_MANY_REQUESTS
+
 from app.core.config import settings
 
 # Configure logging
@@ -27,6 +27,7 @@ api_key_query = APIKeyQuery(name="api_key", auto_error=False)
 # Format: {ip_address: [(timestamp1), (timestamp2), ...]}
 request_records: Dict[str, List[float]] = {}
 
+
 def get_api_key(
     api_key_header: str = Security(api_key_header),
     api_key_query: str = Security(api_key_query),
@@ -37,10 +38,8 @@ def get_api_key(
     Args:
         api_key_header: API key from header
         api_key_query: API key from query parameter
-
     Returns:
         True if valid API key
-
     Raises:
         HTTPException: If API key is invalid or missing
     """
@@ -48,17 +47,13 @@ def get_api_key(
     # This helps in development/testing
     if not settings.API_KEY:
         return True
-
     # Try to get API key from header or query parameter
     api_key = api_key_header or api_key_query
-
     if api_key == settings.API_KEY:
         return True
-
     logger.warning(f"Invalid API key attempt: {api_key_header or api_key_query}")
-    raise HTTPException(
-        status_code=HTTP_403_FORBIDDEN, detail="Invalid or missing API key"
-    )
+    raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Invalid or missing API key")
+
 
 def rate_limit(max_requests: int = 100, window_seconds: int = 60) -> Callable:
     """
@@ -67,10 +62,10 @@ def rate_limit(max_requests: int = 100, window_seconds: int = 60) -> Callable:
     Args:
         max_requests: Maximum number of requests allowed in the time window
         window_seconds: Time window in seconds
-
     Returns:
         A dependency function for rate limiting
     """
+
     async def rate_limit_dependency(request: Request) -> None:
         # Get client IP
         client_host = request.client.host if request.client else "unknown"
@@ -84,7 +79,8 @@ def rate_limit(max_requests: int = 100, window_seconds: int = 60) -> Callable:
 
         # Clean up old records
         request_records[client_host] = [
-            timestamp for timestamp in request_records[client_host]
+            timestamp
+            for timestamp in request_records[client_host]
             if now - timestamp < window_seconds
         ]
 
@@ -93,7 +89,7 @@ def rate_limit(max_requests: int = 100, window_seconds: int = 60) -> Callable:
             logger.warning(f"Rate limit exceeded for client: {client_host}")
             raise HTTPException(
                 status_code=HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Rate limit exceeded: {max_requests} requests per {window_seconds} seconds"
+                detail=f"Rate limit exceeded: {max_requests} requests per {window_seconds} seconds",
             )
 
         # Add current request timestamp
@@ -104,6 +100,7 @@ def rate_limit(max_requests: int = 100, window_seconds: int = 60) -> Callable:
             cleanup_old_rate_records(now, window_seconds)
 
     return rate_limit_dependency
+
 
 def cleanup_old_rate_records(now: float, window_seconds: int) -> None:
     """
@@ -128,6 +125,7 @@ def cleanup_old_rate_records(now: float, window_seconds: int) -> None:
     for ip in ips_to_remove:
         del request_records[ip]
 
+
 def validate_file_access(carousel_id: str, filename: str) -> None:
     """
     Validate file access to prevent directory traversal.
@@ -140,17 +138,16 @@ def validate_file_access(carousel_id: str, filename: str) -> None:
         HTTPException: If validation fails
     """
     # Validate carousel_id format (alphanumeric only)
-    if not re.match(r'^[a-zA-Z0-9-_]+$', carousel_id):
+    if not re.match(r"^[a-zA-Z0-9-_]+$", carousel_id):
         logger.warning(f"Invalid carousel_id format: {carousel_id}")
-        raise HTTPException(status_code=404,
-                            detail="Invalid carousel ID format")
+        raise HTTPException(status_code=404, detail="Invalid carousel ID format")
 
     # Validate filename format (prevent path traversal)
-    if not re.match(r'^[a-zA-Z0-9-_]+\.[a-zA-Z0-9]+$', filename):
+    if not re.match(r"^[a-zA-Z0-9-_]+\.[a-zA-Z0-9]+$", filename):
         logger.warning(f"Invalid filename format: {filename}")
         raise HTTPException(status_code=404, detail="Invalid filename format")
 
     # Ensure filename doesn't contain path traversal attempts
-    if '..' in filename or '/' in filename:
+    if ".." in filename or "/" in filename:
         logger.warning(f"Path traversal attempt detected: {filename}")
         raise HTTPException(status_code=403, detail="Invalid file access")

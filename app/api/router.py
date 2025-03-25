@@ -4,9 +4,9 @@ API router module for the Instagram Carousel Generator.
 This module aggregates all versioned routers into a single router with versioned prefixes.
 This creates a clean versioning structure that supports multiple API versions simultaneously.
 """
-
-from fastapi import APIRouter, Request, Depends
 import logging
+
+from fastapi import APIRouter, Depends, Request
 
 # Import the v1 router (current version)
 from app.api.v1.endpoints import router as router_v1
@@ -24,8 +24,9 @@ v1_tag = {
     "externalDocs": {
         "description": "API Versioning Documentation",
         "url": "/docs/api/versioning.md",
-    }
+    },
 }
+
 
 # Function to add version information to request state
 async def set_api_version(request: Request, version: str):
@@ -46,16 +47,25 @@ async def set_api_version(request: Request, version: str):
     # No return value needed for dependencies that don't return a value
     return None
 
+
 # Include each versioned router with its version prefix and appropriate tags
 # Define a version-specific dependency function
 def set_v1_api_version(request: Request):
+    """Set API version to v1 in request state.
+
+    This is a dependency function used to tag requests with the v1 API version.
+
+    Args:
+        request: The FastAPI request object
+
+    Returns:
+        The result of set_api_version with v1 as the version
+    """
     return set_api_version(request, "v1")
 
+
 api_router.include_router(
-    router_v1,
-    prefix="/v1",
-    dependencies=[Depends(set_v1_api_version)],
-    tags=["v1"]
+    router_v1, prefix="/v1", dependencies=[Depends(set_v1_api_version)], tags=["v1"]
 )
 
 # When new versions are added, they can be included like this:
