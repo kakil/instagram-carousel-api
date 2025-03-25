@@ -24,12 +24,9 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e ".[dev]"
+        pip install -e .  # Skip dev dependencies for deployment
 
-    - name: Run tests
-      run: |
-        # Remove coverage options for this workflow
-        python -m pytest tests/ --no-header --no-summary
+    # Removed the Run tests step since we have a separate test workflow
 
     - name: Set up SSH
       uses: webfactory/ssh-agent@v0.7.0
