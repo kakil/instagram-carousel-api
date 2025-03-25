@@ -9,13 +9,18 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10']
+      fail-fast: false  # This allows all matrix jobs to complete even if one fails
+
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: ${{ matrix.python-version }}
         cache: 'pip'
 
     - name: Install dependencies
@@ -31,11 +36,12 @@ jobs:
       run: |
         black --check app tests
 
-    - name: Run tests
+    - name: Run tests with coverage
       run: |
-        pytest tests/
+        python -m pytest tests/ --cov=app --cov-report=xml
 
     - name: Upload test coverage
       uses: codecov/codecov-action@v3
       with:
+        file: ./coverage.xml
         fail_ci_if_error: false

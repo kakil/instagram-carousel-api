@@ -28,7 +28,8 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest tests/
+        # Remove coverage options for this workflow
+        python -m pytest tests/ --no-header --no-summary
 
     - name: Set up SSH
       uses: webfactory/ssh-agent@v0.7.0
@@ -44,38 +45,38 @@ jobs:
         # Add server to known hosts
         mkdir -p ~/.ssh
         ssh-keyscan $SERVER_IP >> ~/.ssh/known_hosts
-        
+
         # Create archive of project
         git archive --format=tar HEAD | gzip > deployment.tar.gz
-        
+
         # Upload to server
         scp deployment.tar.gz $SERVER_USER@$SERVER_IP:/tmp/
-        
+
         # Deploy commands
-        ssh $SERVER_USER@$SERVER_IP << 'EOF'
+        ssh $SERVER_USER@$SERVER_IP "
           # Extract deployment
-          mkdir -p $DEPLOY_PATH/new-deploy
-          tar -xzf /tmp/deployment.tar.gz -C $DEPLOY_PATH/new-deploy
-          
+          mkdir -p \$DEPLOY_PATH/new-deploy
+          tar -xzf /tmp/deployment.tar.gz -C \$DEPLOY_PATH/new-deploy
+
           # Install dependencies
-          cd $DEPLOY_PATH/new-deploy
+          cd \$DEPLOY_PATH/new-deploy
           python -m venv venv
           source venv/bin/activate
           pip install -e .
-          
+
           # Create .env file from secrets
-          echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
-          
+          echo \"${{ secrets.ENV_FILE_CONTENT }}\" > .env
+
           # Update symlink to new deployment
-          ln -sfn $DEPLOY_PATH/new-deploy $DEPLOY_PATH/current
-          
+          ln -sfn \$DEPLOY_PATH/new-deploy \$DEPLOY_PATH/current
+
           # Restart service
           sudo systemctl restart instagram-carousel-api
-          
+
           # Clean up
           rm /tmp/deployment.tar.gz
-        EOF
-        
+        "
+
         # Verify deployment
         ssh $SERVER_USER@$SERVER_IP "curl -s http://localhost:5001/health | grep -q 'healthy'"
 
