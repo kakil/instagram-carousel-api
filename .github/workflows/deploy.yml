@@ -26,39 +26,98 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .  # Skip dev dependencies for deployment
 
-    # Try a different approach - install SSH key
-    - name: Install SSH key
-      run: |
-        echo "Setting up SSH key..."
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-
-        # Convert the key if it's in the wrong format
-        ssh-keygen -p -f ~/.ssh/id_rsa -m PEM -P "" -N "" || echo "Key conversion failed, might be in the right format already"
-
-        # Create a more permissive SSH config
-        echo "Host *" > ~/.ssh/config
-        echo "  StrictHostKeyChecking no" >> ~/.ssh/config
-        echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
-        echo "  IdentitiesOnly yes" >> ~/.ssh/config
-        echo "  BatchMode yes" >> ~/.ssh/config
-        echo "  LogLevel DEBUG3" >> ~/.ssh/config
-        chmod 600 ~/.ssh/config
-
-        # Add server to known hosts
-        ssh-keyscan ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
-
-        # Debug: Check key fingerprint
-        echo "SSH key fingerprint:"
-        ssh-keygen -l -f ~/.ssh/id_rsa
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
     - name: Test SSH Connection
+      env:
+        SERVER_IP: ${{ secrets.SERVER_IP }}
+        SERVER_USER: ${{ secrets.SERVER_USER }}
       run: |
-        # Test with verbose output
-        echo "Testing SSH connection..."
-        # Try with explicit key format options
-        ssh -vvv -o "IdentityFile=~/.ssh/id_rsa" ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "echo 'Connection successful'"
+        # Add server to known hosts with verbose output
+        echo "Adding server to known hosts..."
+        mkdir -p ~/.ssh
+        ssh-keyscan -v -H $SERVER_IP >> ~/.ssh/known_hosts
 
-    # We'll add the rest of the deployment steps if the above succeeds
-    # ...
+        # Test connection with verbose output
+        echo "Testing SSH connection..."
+        ssh -v $SERVER_USER@$SERVER_IP "echo 'SSH connection successful'"
+
+    - name: Deploy to Production
+      if: success()
+      env:
+        SERVER_IP: ${{ secrets.SERVER_IP }}
+        SERVER_USER: ${{ secrets.SERVER_USER }}
+        DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      run: |
+        # Create archive of project
+        git archive --format=tar HEAD | gzip > deployment.tar.gz
+
+        # Show archive size
+        echo "Archive size: $(ls -lh deployment.tar.gz | awk '{print $5}')"
+
+        # Upload to server with verbose output
+        echo "Uploading to server..."
+        scp -v deployment.tar.gz $SERVER_USER@$SERVER_IP:/tmp/
+
+        # Deploy commands
+        echo "Executing deployment commands..."
+        ssh -v $SERVER_USER@$SERVER_IP "
+          echo 'Creating directories...'
+          mkdir -p \$DEPLOY_PATH/new-deploy
+
+          echo 'Extracting archive...'
+          tar -xzf /tmp/deployment.tar.gz -C \$DEPLOY_PATH/new-deploy
+
+          echo 'Installing dependencies...'
+          cd \$DEPLOY_PATH/new-deploy
+          python -m venv venv
+          source venv/bin/activate
+          pip install -e .
+
+          echo 'Creating .env file...'
+          echo \"${{ secrets.ENV_FILE_CONTENT }}\" > .env
+
+          echo 'Updating symlink...'
+          ln -sfn \$DEPLOY_PATH/new-deploy \$DEPLOY_PATH/current
+
+          echo 'Restarting service...'
+          sudo systemctl restart instagram-carousel-api
+
+          echo 'Cleaning up...'
+          rm /tmp/deployment.tar.gz
+
+          echo 'Deployment completed'
+        "
+
+        # Verify deployment
+        echo "Verifying deployment..."
+        ssh $SERVER_USER@$SERVER_IP "curl -s http://localhost:5001/health | grep -q 'healthy' && echo 'Health check successful' || echo 'Health check failed'"
+
+    - name: Notify on Success
+      if: success()
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: ${{ secrets.MAIL_SERVER }}
+        server_port: ${{ secrets.MAIL_PORT }}
+        username: ${{ secrets.MAIL_USERNAME }}
+        password: ${{ secrets.MAIL_PASSWORD }}
+        subject: "✅ Deployment Successful - Instagram Carousel API"
+        body: "Instagram Carousel API has been successfully deployed to production"
+        to: ${{ secrets.NOTIFICATION_EMAIL }}
+        from: GitHub Actions
+
+    - name: Notify on Failure
+      if: failure()
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: ${{ secrets.MAIL_SERVER }}
+        server_port: ${{ secrets.MAIL_PORT }}
+        username: ${{ secrets.MAIL_USERNAME }}
+        password: ${{ secrets.MAIL_PASSWORD }}
+        subject: "❌ Deployment Failed - Instagram Carousel API"
+        body: "Instagram Carousel API deployment failed. Please check GitHub Actions for details."
+        to: ${{ secrets.NOTIFICATION_EMAIL }}
+        from: GitHub Actions
