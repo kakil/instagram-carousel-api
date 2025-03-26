@@ -4,9 +4,10 @@ Configuration module for the Instagram Carousel Generator.
 This module provides centralized configuration management using Pydantic's
 BaseSettings, which allows for environment variable overrides and .env file loading.
 """
+import json
 import os
 from pathlib import Path
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple
 
 from dotenv import load_dotenv
 from pydantic import Field, field_validator
@@ -55,22 +56,17 @@ class Settings(BaseSettings):
     )
 
     # CORS settings
-    ALLOW_ORIGINS: List[str] = Field(
-        default_factory=lambda: os.getenv("ALLOW_ORIGINS", "*").split(","),
-        description="Allowed CORS origins",
+    # Change it to a simple hard-coded default:
+    ALLOW_ORIGINS_STR: str = Field(
+        default="*", description="Allowed CORS origins as comma-separated string"
     )
     ALLOW_CREDENTIALS: bool = Field(
         default_factory=lambda: os.getenv("ALLOW_CREDENTIALS", "True").lower() == "true",
         description="Allow credentials in CORS",
     )
-    ALLOW_METHODS: List[str] = Field(
-        default_factory=lambda: os.getenv("ALLOW_METHODS", "*").split(","),
-        description="Allowed HTTP methods in CORS",
-    )
-    ALLOW_HEADERS: List[str] = Field(
-        default_factory=lambda: os.getenv("ALLOW_HEADERS", "*").split(","),
-        description="Allowed HTTP headers in CORS",
-    )
+    ALLOW_METHODS_STR: str = Field(default="*", description="Allowed HTTP methods in CORS")
+
+    ALLOW_HEADERS_STR: str = Field(default="*", description="Allowed HTTP headers in CORS")
 
     # Security settings
     RATE_LIMIT_MAX_REQUESTS: int = Field(
@@ -227,21 +223,50 @@ class Settings(BaseSettings):
         except (ValueError, TypeError):
             return (18, 18, 18)  # Default fallback
 
-    @field_validator("ALLOW_ORIGINS", mode="before")
-    def parse_allow_origins(cls, v: Union[List[str], str]) -> List[str]:
-        """Parse ALLOW_ORIGINS from environment variable if needed."""
-        if isinstance(v, list):
-            return v
+    # Replace the List[str] field with a simple string field
+    ALLOW_ORIGINS_STR: str = Field(
+        default="*", description="Allowed CORS origins as comma-separated string or wildcard"
+    )
 
-        if isinstance(v, str):
-            # Special case for the wildcard
-            if v.strip() == "*":
-                return ["*"]
+    # Remove the validator completely
 
-            # Split by comma and trim whitespace
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
+    # Add this property to your Settings class
+    # Add properties for all string-based CORS settings
+    @property
+    def ALLOW_ORIGINS(self) -> List[str]:
+        """Parse ALLOW_ORIGINS_STR into a list of allowed origins."""
+        return self._parse_cors_list(self.ALLOW_ORIGINS_STR)
 
-        return ["*"]  # Default fallback
+    @property
+    def ALLOW_METHODS(self) -> List[str]:
+        """Parse ALLOW_METHODS_STR into a list of allowed methods."""
+        return self._parse_cors_list(self.ALLOW_METHODS_STR)
+
+    @property
+    def ALLOW_HEADERS(self) -> List[str]:
+        """Parse ALLOW_HEADERS_STR into a list of allowed headers."""
+        return self._parse_cors_list(self.ALLOW_HEADERS_STR)
+
+    def _parse_cors_list(self, value: str) -> List[str]:
+        """Parse a CORS list value from string to list."""
+        if not value or value.strip() == "":
+            return []
+
+        # Handle wildcard
+        if value.strip() == "*":
+            return ["*"]
+
+        # Try parsing as JSON if it looks like JSON
+        if value.strip().startswith("[") and value.strip().endswith("]"):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # Split by comma and trim whitespace
+        return [item.strip() for item in value.split(",") if item.strip()]
 
     def get_full_api_prefix(self) -> str:
         """Get the full API prefix with version."""

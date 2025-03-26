@@ -16,8 +16,11 @@ services:
       - API_PREFIX=/api
       - HOST=0.0.0.0
       - PORT=5001
-      - ALLOW_ORIGINS=*
       - LOG_LEVEL=DEBUG
+      - ALLOW_ORIGINS_STR=*
+      - ALLOW_METHODS_STR=*  # Updated field name
+      - ALLOW_HEADERS_STR=*  # Updated field name
+      - ALLOW_CREDENTIALS=true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
       interval: 30s
@@ -39,6 +42,7 @@ services:
       - api
     networks:
       - carousel-network
+    command: sleep infinity
 
 networks:
   carousel-network:
