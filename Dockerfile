@@ -1,47 +1,79 @@
-FROM python:3.10-slim
+FROM python:3.10-slim as base
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONFAULTHANDLER=1 \
+    PYTHONHASHSEED=random \
     PIP_NO_CACHE_DIR=off \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PYTHONPATH="/app"
+    PIP_DISABLE_PIP_VERSION_CHECK=on
 
-# Create and set working directory
 WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    libfreetype6-dev \
+    libfribidi-dev \
+    libharfbuzz-dev \
     libffi-dev \
+    libjpeg-dev \
+    libpng-dev \
     libssl-dev \
-    fonts-dejavu \
-    fontconfig \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Update font cache
-RUN fc-cache -fv
-
-# Install Python dependencies
-COPY requirements.txt /app/
-COPY requirements-dev.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+# Install fonts for image generation
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-liberation \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy project files
-COPY . /app/
+COPY requirements.txt .
+COPY requirements-dev.txt .
 
-# Install the package
+# Development image with hot reloading
+FROM base as development
+
+# Install dev dependencies
+RUN pip install -r requirements-dev.txt
+
+# Copy everything (for development)
+COPY . .
+
+# Install the package in development mode
 RUN pip install -e .
 
-# Expose port
+# Create necessary directories
+RUN mkdir -p /app/static/temp /app/static/assets
+
+# Expose the port
 EXPOSE 5001
 
-# Create non-root user
-RUN adduser --disabled-password --gecos "" appuser
-RUN chown -R appuser:appuser /app
-USER appuser
+# Start development server
+CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "5001", "--reload"]
 
-# Run the application
+# Production image with minimal size
+FROM base as production
+
+# Install production dependencies only
+RUN pip install -r requirements.txt
+
+# Copy only necessary files for production
+COPY app /app/app
+COPY static /app/static
+COPY setup.py .
+COPY README.md .
+
+# Install the package
+RUN pip install .
+
+# Create necessary directories
+RUN mkdir -p /app/static/temp /app/static/assets
+
+# Expose the port
+EXPOSE 5001
+
+# Start production server
 CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "5001"]

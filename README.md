@@ -70,24 +70,33 @@ For detailed documentation, please refer to the following:
 - [Deployment Guide](docs/guides/deployment.md)
 - [n8n Workflow Implementation](docs/guides/n8n-workflow.md)
 - [Contributing Guidelines](docs/guides/contributing.md)
-p
+
 ## Installation
 
-### Quick Start with Docker
+### Quick Start with Docker (Recommended)
+
+The easiest way to get started is with Docker, which provides a complete development environment:
 
 ```bash
 # Clone the repository
 git clone https://github.com/kakil/instagram-carousel-api.git
 cd instagram-carousel-api
 
-# Copy example environment file
-cp .env.example .env
+# Set up the Docker environment
+chmod +x scripts/setup-docker-env.sh
+./scripts/setup-docker-env.sh
 
-# Build and run with Docker
-docker-compose up -d
+# Start the development environment
+./scripts/docker.sh dev
 ```
 
+The API will be available at http://localhost:5001 with hot-reloading enabled.
+
+For more details, see the [Docker Development Environment](#docker-development-environment) section below.
+
 ### Manual Installation
+
+If you prefer not to use Docker, you can set up the environment manually:
 
 ```bash
 # Clone the repository
@@ -233,6 +242,38 @@ isort app tests
 flake8 app tests
 ```
 
+## Docker Development Environment
+
+This project includes a comprehensive Docker-based development environment that makes it easy to develop, test, and deploy the application consistently across different platforms.
+
+### Docker Commands
+
+The `docker.sh` script provides several commands to make development easier:
+
+| Command | Description |
+|---------|-------------|
+| `./scripts/docker.sh dev` | Start development environment |
+| `./scripts/docker.sh dev:build` | Rebuild and start development environment |
+| `./scripts/docker.sh test` | Run tests in Docker |
+| `./scripts/docker.sh test:coverage` | Run tests with coverage report |
+| `./scripts/docker.sh prod` | Start production environment |
+| `./scripts/docker.sh prod:build` | Rebuild and start production environment |
+| `./scripts/docker.sh clean` | Clean Docker resources |
+| `./scripts/docker.sh logs` | Show logs |
+| `./scripts/docker.sh shell` | Open a shell in the API container |
+| `./scripts/docker.sh help` | Show help message |
+
+### Docker Environments
+
+The project includes multiple Docker Compose files for different environments:
+
+- `docker-compose.yml`: Development environment with hot-reloading
+- `docker-compose.advanced.yml`: Advanced development setup with Nginx, Redis, etc.
+- `docker-compose.test.yml`: Test environment for running tests
+- `docker-compose.prod.yml`: Production environment
+
+For detailed information about Docker development, see the [Docker Production Deployment Guide](docs/guides/docker-production-deployment.md).
+
 ## Customization Guide
 
 The Instagram Carousel Generator is designed to be customized and extended:
@@ -318,6 +359,8 @@ docker run -p 5001:5001 \
   -e API_KEY=your-secure-api-key \
   instagram-carousel-generator
 ```
+
+For detailed Docker production deployment instructions, refer to the [Docker Production Deployment Guide](docs/guides/docker-production-deployment.md).
 
 ## License
 

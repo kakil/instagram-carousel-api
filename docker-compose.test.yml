@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+      - API_PREFIX=/api
+      - HOST=0.0.0.0
+      - PORT=5001
+      - ALLOW_ORIGINS=*
+      - LOG_LEVEL=DEBUG
+    command: >
+      pytest tests
+             --cov=app
+             --cov-report=term
+             --cov-report=html:coverage_html
+    networks:
+      - carousel-test-network
+
+networks:
+  carousel-test-network:
+    driver: bridge
