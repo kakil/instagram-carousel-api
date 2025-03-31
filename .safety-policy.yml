@@ -5,40 +5,40 @@ security:
   ignore-vulnerabilities:
     # In case transitive dependencies still have old versions of starlette
     # We've updated FastAPI to get the latest starlette, but if it's still flagged:
-    - vulnerability-id: 73725
+    73725:
       reason: >
         We are using the latest FastAPI which depends on starlette,
         but if CI is still detecting the vulnerability, we need to
         ignore it temporarily until all dependencies are aligned.
       expires: 2025-06-30
 
-    - vulnerability-id: 68094
+    68094:
       reason: >
         We're no longer directly using vulnerable python-multipart versions,
         but it may be a transitive dependency. We'll monitor for updates.
       expires: 2025-06-30
 
     # Pillow vulnerabilities
-    - vulnerability-id: 64437
+    64437:
       reason: >
         We're updating to Pillow 10.3.0, but if there are any transitive
         dependencies with older versions, we need to ignore temporarily.
       expires: 2025-06-30
 
-    - vulnerability-id: 64436
+    64436:
       reason: >
         We're updating to Pillow 10.3.0, but if there are any transitive
         dependencies with older versions, we need to ignore temporarily.
       expires: 2025-06-30
 
-    - vulnerability-id: 67136
+    67136:
       reason: >
         We're updating to Pillow 10.3.0, but if there are any transitive
         dependencies with older versions, we need to ignore temporarily.
       expires: 2025-06-30
 
     # Black vulnerability
-    - vulnerability-id: 66742
+    66742:
       reason: >
         We're updating to Black 24.3.0, but if there are any transitive
         dependencies with older versions, we need to ignore temporarily.
