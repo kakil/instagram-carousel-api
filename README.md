@@ -306,6 +306,12 @@ DEFAULT_BG_COLOR_B=0
 
 ## Deployment
 
+For detailed deployment instructions, see:
+- [Production Deployment Guide](docs/guides/production-deployment.md)
+- [Docker Production Deployment Guide](docs/guides/docker-production-deployment.md)
+- [Cloudflare Integration Guide](docs/guides/cloudflare-integration.md)
+
+
 ### Production Setup
 
 1. Configure environment variables for production:
