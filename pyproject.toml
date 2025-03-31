@@ -34,7 +34,8 @@ dev = [
     "flake8",
     "black",
     "mypy",
-    "isort"
+    "isort",
+    "httpx"
 ]
 
 [project.scripts]
