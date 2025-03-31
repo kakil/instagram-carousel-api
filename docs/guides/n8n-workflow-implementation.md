@@ -953,9 +953,9 @@ When debugging the workflow:
 
 ### 9.1 Example Files
 
-- **Workflow Example**: [examples/Instagram_Carousel___1_0.json](examples/Instagram_Carousel___1_0.json) - Complete workflow ready
+- **Workflow Example**: [examples/Instagram_Carousel___1_0.json](https://github.com/kakil/instagram-carousel-api/blob/main/docs/examples/Instagram_Carousel___1_0.json) - Complete workflow ready
   to import into n8n
-- **Implementation Guide**: [guides/n8n-workflow-implementation.md](guides/n8n-workflow-implementation.md)
+- **Implementation Guide**: This guide `docs/guides/n8n-workflow-implementation.md`
 
 ### 9.2 Customization
 
