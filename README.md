@@ -68,7 +68,7 @@ For detailed documentation, please refer to the following:
 - [API Documentation](docs/api/endpoints.md)
 - [Configuration Guide](docs/guides/configuration.md)
 - [Deployment Guide](docs/guides/deployment.md)
-- [n8n Workflow Implementation](docs/guides/n8n-workflow.md)
+- [n8n Workflow Implementation](docs/guides/n8n-workflow-implementation.md)
 - [Contributing Guidelines](docs/guides/contributing.md)
 
 ## Installation
