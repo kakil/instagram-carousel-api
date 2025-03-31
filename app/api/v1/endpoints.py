@@ -3,6 +3,7 @@ API endpoints for version 1 of the Instagram Carousel Generator.
 
 This module defines the v1 endpoints for carousel generation and management.
 """
+
 import logging
 import os
 import time
@@ -433,7 +434,7 @@ async def get_temp_file(
 
     try:
         # Validate file access parameters to prevent directory traversal
-        validate_file_access(carousel_id, filename)
+        validate_file_access(carousel_id, filename, request)
 
         # Log request info
         request_logger.info(

@@ -7,6 +7,7 @@ Enhanced security features including:
 - IP-based tracking
 - Comprehensive request validation
 """
+
 import logging
 import time
 from collections import defaultdict
@@ -189,7 +190,9 @@ def cleanup_old_windows(client_id: str, current_window: int) -> None:
                 del rate_limit_started[client_id]
 
 
-def validate_file_access(file_id: str, request: Request) -> bool:
+def validate_file_access(
+    carousel_id: str, filename: str, request: Optional[Request] = None
+) -> bool:
     """
     Validate access to a specific file/carousel.
 
@@ -198,8 +201,9 @@ def validate_file_access(file_id: str, request: Request) -> bool:
     scenario, you might want to check against a database or other authorization system.
 
     Args:
-        file_id: The ID of the file or carousel to check
-        request: The FastAPI request object
+        carousel_id: The ID of the carousel to check
+        filename: The filename to access
+        request: The FastAPI request object (optional)
 
     Returns:
         bool: True if access is allowed, False otherwise
@@ -215,7 +219,12 @@ def validate_file_access(file_id: str, request: Request) -> bool:
     # a database record of who owns the file, or by checking a token claim
 
     # Log the access attempt
-    client_ip = get_client_ip(request)
-    logger.info(f"File access request from {client_ip} for file {file_id}")
+    if request:
+        client_ip = get_client_ip(request)
+        logger.info(
+            f"File access request from {client_ip} for carousel {carousel_id}, file {filename}"
+        )
+    else:
+        logger.info(f"File access request for carousel {carousel_id}, file {filename}")
 
     return True
