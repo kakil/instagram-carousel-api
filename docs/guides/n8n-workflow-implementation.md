@@ -240,7 +240,7 @@ You can either build the workflow from scratch or import the provided example wo
 
 #### Option 1: Import the Example Workflow (Recommended)
 
-1. Download the example workflow JSON file from: [examples/Instagram_Carousel___1_0.json](examples/Instagram_Carousel___1_0.json)
+1. Download the example workflow JSON file from: [examples/Instagram_Carousel___1_0.json]((https://github.com/kakil/instagram-carousel-api/blob/main/docs/examples/Instagram_Carousel___1_0.json))
 2. Open your n8n instance
 3. Click "Workflows" in the sidebar
 4. Click the "Import" button in the top right
