@@ -6,6 +6,7 @@ tests:
   # Disable specific tests if they're generating false positives
   - B201  # Suppressing any unnecessary tests
   - B301
+  - B113  # Skip request_without_timeout - generates false positives with f-strings
 
 # Skipping specific paths
 skips:

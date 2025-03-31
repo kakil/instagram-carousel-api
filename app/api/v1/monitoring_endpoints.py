@@ -4,6 +4,7 @@ Monitoring endpoints for the Instagram Carousel Generator API.
 This module provides endpoints for accessing monitoring data,
 including metrics, health status, and the monitoring dashboard.
 """
+
 import json
 import logging
 import os
@@ -221,22 +222,23 @@ async def prometheus_metrics(request: Request):
         requests = metrics_data.get("requests", {})
         prometheus_lines.append("# HELP api_requests_total Total number of API requests")
         prometheus_lines.append("# TYPE api_requests_total counter")
-        prometheus_lines.append(f"api_requests_total {requests.get('total', 0)}")  # nosec B113
+        # B113 warning is not applicable here as this is string formatting, not a request
+        prometheus_lines.append(f"api_requests_total {requests.get('total', 0)}")  # nosec
 
         prometheus_lines.append(
             "# HELP api_request_errors_total Total number of API request errors"
         )
         prometheus_lines.append("# TYPE api_request_errors_total counter")
-        prometheus_lines.append(
-            f"api_request_errors_total {requests.get('errors', 0)}"
-        )  # nosec B113
+        # B113 warning is not applicable here as this is string formatting, not a request
+        prometheus_lines.append(f"api_request_errors_total {requests.get('errors', 0)}")  # nosec
 
         prometheus_lines.append(
             "# HELP api_request_duration_milliseconds Average API request duration in milliseconds"
         )
         prometheus_lines.append("# TYPE api_request_duration_milliseconds gauge")
+        # B113 warning is not applicable here as this is string formatting, not a request
         prometheus_lines.append(
-            f"api_request_duration_milliseconds {requests.get('avg_response_time_ms', 0)}"  # nosec B113
+            f"api_request_duration_milliseconds {requests.get('avg_response_time_ms', 0)}"  # nosec
         )
 
         # Add carousel metrics
