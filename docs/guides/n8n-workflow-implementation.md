@@ -136,7 +136,7 @@ You can either build the workflow from scratch or import the provided example wo
 
 #### Option 1: Import the Example Workflow (Recommended)
 
-1. Download the example workflow JSON file from: `docs/examples/Instagram_Carousel___1_0.json`
+1. Download the example workflow JSON file from: [/docs/examples/Instagram_Carousel___1_0.json](https://github.com/kakil/instagram-carousel-api/blob/main/docs/examples/Instagram_Carousel___1_0.json)
 2. Open your n8n instance
 3. Click "Workflows" in the sidebar
 4. Click the "Import" button in the top right
@@ -872,7 +872,7 @@ Create a Google Sheet with the following columns:
 
 ### 7.2 Example Workflow Sheet Structure
 
-When using the example workflow JSON (`docs/examples/Instagram_Carousel___1_0.json`), your sheet needs these specific columns:
+When using the example workflow JSON [/docs/examples/Instagram_Carousel___1_0.json](https://github.com/kakil/instagram-carousel-api/blob/main/docs/examples/Instagram_Carousel___1_0.json), your sheet needs these specific columns:
 
 #### Main Sheet (Sheet1):
 - `carousel_id`: Unique identifier for the carousel (will be filled by workflow)
@@ -922,7 +922,7 @@ When debugging the workflow:
 
 ### 9.1 Example Files
 
-- **Workflow Example**: `https://github.com/kakil/instagram-carousel-api/blob/main/docs/examples/Instagram_Carousel___1_0.json` - Complete workflow ready to import into n8n
+- **Workflow Example**: [/docs/examples/Instagram_Carousel___1_0.json](https://github.com/kakil/instagram-carousel-api/blob/main/docs/examples/Instagram_Carousel___1_0.json) - Complete workflow ready to import into n8n
 - **Implementation Guide**: This document (`docs/guides/n8n-workflow-implementation.md`)
 
 ### 9.2 Customization
