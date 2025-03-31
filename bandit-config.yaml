@@ -1,0 +1,35 @@
+# Bandit configuration file
+---
+# Define which tests you want to run
+# Refer to https://bandit.readthedocs.io/en/latest/blacklists/
+tests:
+  # Disable specific tests if they're generating false positives
+  - B201  # Suppressing any unnecessary tests
+  - B301
+
+# Skipping specific paths
+skips:
+  - tests/*  # Skip tests directory
+  - app/tests/*  # Additional test directory skip
+
+# Excluding specific files or directories
+exclude_dirs:
+  - build/
+  - dist/
+  - .venv/
+  - venv/
+
+# Severity levels to include (1-3)
+severities:
+  - LOW
+  - MEDIUM
+  - HIGH
+
+# Confidence levels to include (1-3)
+confidence:
+  - LOW
+  - MEDIUM
+  - HIGH
+
+# Optional: Ignore specific lines or blocks of code
+# Use # nosec comments in your code to ignore specific lines
