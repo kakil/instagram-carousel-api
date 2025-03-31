@@ -6,7 +6,6 @@ showing the benefits of proper dependency injection for testability.
 """
 import os
 import tempfile
-import time
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -18,7 +17,6 @@ from app import get_app
 from app.api.dependencies import get_enhanced_image_service, get_storage_service
 from app.api.router import set_v1_api_version  # Import API versioning function
 from app.api.security import get_api_key
-from app.api.v1.endpoints import log_request_info  # Import the log_request_info function
 from app.services.image_service import BaseImageService
 from app.services.storage_service import StorageService
 
@@ -82,7 +80,6 @@ def client_with_mocks(app, mock_image_service, mock_storage_service, test_reques
         get_enhanced_image_service: lambda: mock_image_service,
         get_storage_service: lambda: mock_storage_service,
         get_api_key: lambda: True,
-        log_request_info: lambda: time.time(),  # Mock the request logging dependency
         Request: lambda: test_request,  # Mock the Request dependency to fix routing issues
         set_v1_api_version: lambda: None,  # Mock API versioning function
     }
@@ -175,7 +172,6 @@ def test_alternative_mocking_approach(app, test_request, mock_image_service, moc
         get_storage_service: lambda: mock_storage_service,
         get_api_key: lambda: True,
         Request: lambda: test_request,  # Mock the Request dependency
-        log_request_info: lambda: time.time(),  # Mock the log_request_info dependency
         set_v1_api_version: lambda: None,  # Mock API versioning function
     }
     client = TestClient(app)

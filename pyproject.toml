@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "instagram-carousel-api"
-version = "0.1.0"
+version = "1.0.0"
 description = "API for generating Instagram carousel images with consistent styling"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -12,9 +12,25 @@ authors = [
     {name = "Kitwana Akil"}
 ]
 classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent"
+]
+keywords = [
+    "instagram",
+    "carousel",
+    "image-generation",
+    "fastapi",
+    "social-media"
 ]
 dependencies = [
     "fastapi==0.109.1",
@@ -30,18 +46,34 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.2.0",
-    "pytest-cov",
-    "flake8",
-    "black",
-    "mypy",
-    "isort",
-    "httpx"
+    "pytest-cov==4.1.0",
+    "flake8==6.0.0",
+    "black==23.1.0",
+    "mypy==1.3.0",
+    "isort==5.12.0",
+    "httpx==0.24.1",
+    "pytest-asyncio<0.22.0"
+]
+monitoring = [
+    "prometheus-client",
+    "opentelemetry-api",
+    "opentelemetry-sdk"
+]
+image = [
+    "opencv-python-headless",
+    "numpy"
 ]
 
 [project.scripts]
 carousel-api = "app.main:run_app"
+carousel-cleanup = "app.cli.cleanup_temp_files:main"
 
-# Rest of your existing configuration follows...
+[project.urls]
+Homepage = "https://github.com/kakil/instagram-carousel-api"
+Repository = "https://github.com/kakil/instagram-carousel-api"
+Documentation = "https://github.com/kakil/instagram-carousel-api/blob/main/README.md"
+Tracker = "https://github.com/kakil/instagram-carousel-api/issues"
+
 [tool.black]
 line-length = 100
 target-version = ['py39']
@@ -61,4 +93,56 @@ exclude = '''
 )/
 '''
 
-# ... (rest of your existing configuration)
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 100
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+known_first_party = ["app"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+strict_optional = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+markers = [
+    "unit: marks tests as unit tests",
+    "integration: marks tests as integration tests",
+    "api: marks tests as API tests",
+    "slow: marks tests as slow running tests",
+    "dependency: marks tests related to dependency injection",
+    "asyncio: mark tests as asyncio tests"
+]
+addopts = [
+    "--strict-markers",
+    "--cov=app",
+    "--cov-report=term",
+    "--cov-report=html:coverage_html",
+    "--no-cov-on-fail"
+]
+asyncio_mode = "auto"
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = "E203, W503"
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.pyc",
+    "*.egg-info",
+    ".cache",
+    ".eggs"
+]
