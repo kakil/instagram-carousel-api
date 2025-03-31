@@ -1,0 +1,1414 @@
+{
+  "name": "Instagram Carousel - 1.0",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.cron",
+      "position": [
+        -920,
+        -620
+      ],
+      "id": "11de9a16-7b82-46ff-bd61-193cc4fb7d3d",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1snAnNsdJ9NX5_j7nbvJnOrTlErDROi7amtVTwdk4T7s",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1snAnNsdJ9NX5_j7nbvJnOrTlErDROi7amtVTwdk4T7s/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "scheduled"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Google Sheets - Get Scheduled Carousels",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        -720,
+        -620
+      ],
+      "id": "c532a6c0-8d40-4eb2-8861-9d6f29b1758d",
+      "typeVersion": 4.5,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "9fYHb1z1fe2JqXA2",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Loop Through Carousels",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        -480,
+        -620
+      ],
+      "id": "7d5e0a69-37f6-4608-9fcc-10ad580f8854",
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kitwanaakil.com/instagram-carousel/api/generate-carousel-with-urls",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "name": "Generate Carousel Images",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        680,
+        -600
+      ],
+      "id": "cc4d3aa3-1dff-4f1f-9055-d7c869ea8545",
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1snAnNsdJ9NX5_j7nbvJnOrTlErDROi7amtVTwdk4T7s",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1snAnNsdJ9NX5_j7nbvJnOrTlErDROi7amtVTwdk4T7s/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "={{$json.status}}",
+            "carousel_id": "={{$json.carousel_id}}",
+            "row_number": "={{ $json.row_number }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "carousel_id",
+              "displayName": "carousel_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "carousel_title",
+              "displayName": "carousel_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide1_text",
+              "displayName": "slide1_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide2_text",
+              "displayName": "slide2_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide3_text",
+              "displayName": "slide3_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide4_text",
+              "displayName": "slide4_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide5_text",
+              "displayName": "slide5_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide6_text",
+              "displayName": "slide6_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide7_text",
+              "displayName": "slide7_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide8_text",
+              "displayName": "slide8_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hashtags",
+              "displayName": "hashtags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "include_logo",
+              "displayName": "include_logo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "logo_path",
+              "displayName": "logo_path",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "publish_date",
+              "displayName": "publish_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Update Google Sheet - Success",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        20,
+        60
+      ],
+      "id": "19c49703-acd0-4dac-897d-12778ee80994",
+      "typeVersion": 4.5,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "9fYHb1z1fe2JqXA2",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1snAnNsdJ9NX5_j7nbvJnOrTlErDROi7amtVTwdk4T7s",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1snAnNsdJ9NX5_j7nbvJnOrTlErDROi7amtVTwdk4T7s/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "carousel_id": "={{ $json.carousel_id }}",
+            "status": "={{ $json.status }}"
+          },
+          "matchingColumns": [
+            "carousel_id"
+          ],
+          "schema": [
+            {
+              "id": "carousel_id",
+              "displayName": "carousel_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "carousel_title",
+              "displayName": "carousel_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide1_text",
+              "displayName": "slide1_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide2_text",
+              "displayName": "slide2_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide3_text",
+              "displayName": "slide3_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide4_text",
+              "displayName": "slide4_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide5_text",
+              "displayName": "slide5_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide6_text",
+              "displayName": "slide6_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide7_text",
+              "displayName": "slide7_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide8_text",
+              "displayName": "slide8_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hashtags",
+              "displayName": "hashtags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "include_logo",
+              "displayName": "include_logo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "logo_path",
+              "displayName": "logo_path",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "publish_date",
+              "displayName": "publish_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Update Google Sheet - Error",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        20,
+        300
+      ],
+      "id": "11c51966-5a33-43e0-bc6e-8bd873a60caf",
+      "typeVersion": 4.5,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "9fYHb1z1fe2JqXA2",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Initialize return items array\nreturnItems = []\n\n# Process each input item\nfor item in items:\n    # Debug what we're receiving\n    print(f\"Processing item: {item['json']}\")\n    \n    # Initialize slides array - THIS IS CRITICAL\n    slides = []\n    \n    # Collect all non-empty slide texts (slide1_text, slide2_text, etc.)\n    for i in range(1, 9):  # Looking at slides 1-8\n        slide_key = f\"slide{i}_text\"\n        # Check if the key exists and has content\n        if slide_key in item['json'] and item['json'][slide_key]:\n            slide_text = str(item['json'][slide_key]).strip()\n            if slide_text:\n                print(f\"Found slide {i}: {slide_text[:20]}...\")\n                slides.append({\"text\": slide_text})\n    \n    # Create formatted carousel data\n    # Make sure this node preserves row_number\n    formatted_data = {\n        \"carousel_title\": item['json'].get('carousel_title', 'Untitled Carousel'),\n        \"slides\": slides,\n        \"include_logo\": item['json'].get('include_logo') == \"true\" or item['json'].get('include_logo') is True,\n        \"logo_path\": item['json'].get('logo_path', ''),\n        \"row_number\": item['json'].get('row_number'),  # Store row number explicitly\n        \"caption\": item['json'].get('caption', ''),\n        \"hashtags\": item['json'].get('hashtags', '')\n    }\n    \n    # Ensure include_logo is explicitly a boolean\n    if formatted_data[\"include_logo\"] == \"\" or formatted_data[\"include_logo\"] is None:\n        formatted_data[\"include_logo\"] = False\n    \n    # Debug output\n    print(f\"Formatted data: {formatted_data}\")\n    \n    # Add to return items\n    returnItems.append({\"json\": formatted_data})\n\n# Return the processed items\nreturn returnItems"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -220,
+        -600
+      ],
+      "id": "50a91a1e-43c7-4c9b-8e89-34a518fc534a",
+      "name": "Format Carousel Data"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Initialize return items array\nreturnItems = []\n\n# Define a function to sanitize text\ndef sanitize_text(text):\n    if not text:\n        return \"\"\n    \n    # Convert to string if not already\n    text = str(text)\n    \n    # Replace problematic characters\n    replacements = {\n        '→': '->',  # Right arrow\n        '←': '<-',  # Left arrow\n        '↑': '^',   # Up arrow\n        '↓': 'v',   # Down arrow\n        '\"': '\"',   # Smart quotes\n        '\"': '\"',   # Smart quotes\n        ''': \"'\",   # Smart apostrophes\n        ''': \"'\",   # Smart apostrophes\n        '—': '-',   # Em dash\n        '–': '-',   # En dash\n        '…': '...'  # Ellipsis\n    }\n    \n    for char, replacement in replacements.items():\n        text = text.replace(char, replacement)\n    \n    return text\n\n# Process each input item\nfor item in items:\n    # Get the input JSON\n    input_data = item['json']\n    \n    # Create a sanitized copy of the input data\n    output_data = dict(input_data)  # Start with a copy of the original\n    \n    # Sanitize the text fields\n    output_data['carousel_title'] = sanitize_text(input_data.get('carousel_title', ''))\n    output_data['caption'] = sanitize_text(input_data.get('caption', ''))\n    output_data['hashtags'] = sanitize_text(input_data.get('hashtags', ''))\n    \n    # Process the slides array\n    if 'slides' in input_data and isinstance(input_data['slides'], list):\n        # Create sanitized slides\n        sanitized_slides = []\n        \n        for slide in input_data['slides']:\n            if isinstance(slide, dict) and 'text' in slide:\n                # Create a sanitized copy of the slide\n                sanitized_slide = dict(slide)  # Start with a copy of the original\n                sanitized_slide['text'] = sanitize_text(slide['text'])\n                sanitized_slides.append(sanitized_slide)\n        \n        # Replace the slides array\n        output_data['slides'] = sanitized_slides\n    \n    # Add to return items\n    returnItems.append({\"json\": output_data})\n\n# Return the processed items\nreturn returnItems"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        -600
+      ],
+      "id": "82370482-5d06-464d-a67d-f2bd661b265e",
+      "name": "Sanitize Code"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Prepare data for Instagram API\nimport json\n\n# Initialize return items array\nreturnItems = []\n\nfor item in items:\n    try:\n        # Extract data\n        images = item['json'].get('images', [])\n        carousel_id = item['json'].get('carousel_id')\n        caption = item['json'].get('caption', '')\n        hashtags = item['json'].get('hashtags', '')\n        \n        # Combine caption and hashtags\n        full_caption = caption\n        if hashtags:\n            full_caption = f\"{caption}\\n\\n{hashtags}\" if caption else hashtags\n        \n        # Get the first image URL for posting\n        first_image_url = images[0]['url'] if images else None\n        \n        # Create formatted output for Instagram API\n        output = {\n            'carousel_id': carousel_id,\n            'image_url': first_image_url,  # For single image posts\n            'images': [img['url'] for img in images],  # List of all image URLs\n            'caption': full_caption\n        }\n        \n        returnItems.append({\"json\": output})\n        \n    except Exception as e:\n        print(f\"Error formatting for Instagram: {e}\")\n        if 'json' not in item:\n            item['json'] = {}\n        item['json']['error'] = str(e)\n        returnItems.append(item)\n\n# Return the processed items\nreturn returnItems"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -580,
+        -180
+      ],
+      "id": "336f56de-5b05-4768-a6eb-e57c51e6862e",
+      "name": "Process Images"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Process the API response and construct image URLs\nimport json\n\n# Initialize return items array\nreturnItems = []\n\nfor item in items:\n    try:\n        # Get workflow static data to access the stored caption\n        workflowStaticData = _getWorkflowStaticData(\"global\")\n        \n        # The API response should be in item['json']\n        response = item['json']\n        \n        # Get carousel_id from the response\n        carousel_id = response.get('carousel_id')\n        \n        if not carousel_id:\n            raise ValueError(\"No carousel_id found in response\")\n        \n        # Get slides data\n        slides = response.get('slides', [])\n        \n        # Base URL for images\n        base_url = \"https://api.kitwanaakil.com/instagram-carousel/api/temp\"\n        \n        # Construct URLs for each slide\n        image_urls = []\n        for slide in slides:\n            filename = slide.get('filename')\n            if filename:\n                # Construct the full URL to the image\n                url = f\"{base_url}/{carousel_id}/{filename}\"\n                image_urls.append({\n                    'url': url,\n                    'filename': filename\n                })\n        \n        # Get the caption from workflow static data instead of the item\n        caption = workflowStaticData.get(\"carousel_caption\", \"\")\n        \n        # Prepare output with necessary data\n        output = {\n            'carousel_id': carousel_id,\n            'images': image_urls,\n            'caption': caption,  # Using the caption from workflow static data\n            'hashtags': item.get('hashtags', '')\n        }\n        \n        returnItems.append({\"json\": output})\n        \n    except Exception as e:\n        print(f\"Error processing carousel: {e}\")\n        # Return the original item with an error flag\n        if 'json' not in item:\n            item['json'] = {}\n        item['json']['error'] = str(e)\n        returnItems.append(item)\n\n# Return the processed items\nreturn returnItems"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        -180
+      ],
+      "id": "c574cdd6-4545-4027-9b76-18da1a3d680f",
+      "name": "Prepare Instagram Upload"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "images",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -360,
+        -180
+      ],
+      "id": "0448d03a-8bc3-4227-a1d6-91cefa591cfd",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Format Single Image Request (Simplified)\n\n# Initialize return items array\nreturnItems = []\n\n# Process each input item\nfor item in items:\n    try:\n        # Extract data from the item\n        json_data = item['json']\n        \n        # Get the image URL from the 'images' field\n        if 'images' in json_data and isinstance(json_data['images'], str):\n            image_url = json_data['images']\n        else:\n            # Fallback to image_url if needed\n            image_url = json_data.get('image_url', '')\n        \n        # Skip if no valid URL found\n        if not image_url or not isinstance(image_url, str):\n            raise ValueError(\"Missing valid image URL\")\n            \n        # Get other fields\n        carousel_id = json_data.get('carousel_id', '')\n        caption = json_data.get('caption', '')\n        \n        # Create simple output\n        output = {\n            'image_url': image_url,\n            'caption': caption,\n            'carousel_id': carousel_id\n        }\n        \n        # Add to results\n        returnItems.append({\"json\": output})\n        \n    except Exception as e:\n        # Simple error handling\n        returnItems.append({\"json\": {\"error\": str(e)}})\n\n# Return the processed items\nreturn returnItems"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -140,
+        -180
+      ],
+      "id": "c9fb219b-5540-4692-95ca-fa812b4d8ab1",
+      "name": "Format Single Image Request"
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "17841452763161920",
+        "edge": "media",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "media_type",
+                "value": "IMAGE"
+              },
+              {
+                "name": "image_url",
+                "value": "={{ $json.image_url}}"
+              },
+              {
+                "name": "is_carousel_item",
+                "value": "true"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -180
+      ],
+      "id": "4f6f0d0f-711e-4446-bac0-7b4f789eaa90",
+      "name": "Upload Single Carousel Item",
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "RYE1L2bnBbLmnp2a",
+          "name": "Instagram Carousel Credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Transform the format for carousel container creation\nreturnItems = []\n\ntry:\n    # In n8n Python nodes, items is a special object, not a standard Python list\n    # Let's try to extract data safely\n    \n    # Get the individual items from the input data\n    input_data = items if hasattr(items, '__iter__') else []\n    \n    # Create a simple list of IDs\n    media_ids = []\n    \n    # Try different approaches to extract IDs\n    for item in input_data:\n        try:\n            # Try direct access first\n            if hasattr(item, 'id'):\n                media_ids.append(item.id)\n            # Then try dict-like access\n            elif isinstance(item, dict) and 'id' in item:\n                media_ids.append(item['id'])\n            # Try json attribute access\n            elif hasattr(item, 'json') and hasattr(item.json, 'id'):\n                media_ids.append(item.json.id)\n            # Try json dict access\n            elif hasattr(item, 'json') and isinstance(item.json, dict) and 'id' in item.json:\n                media_ids.append(item.json['id'])\n        except Exception as e:\n            print(f\"Could not process item: {e}\")\n    \n    # Create output with the media IDs we found\n    output = {\n        'mediaIds': media_ids\n    }\n    \n    returnItems.append({\"json\": output})\nexcept Exception as e:\n    returnItems.append({\"json\": {\"error\": str(e)}})\n\nreturn returnItems"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        -180
+      ],
+      "id": "f2499675-346f-4947-b66c-03c85f00d286",
+      "name": "Transform Media IDs to Array"
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "17841452763161920",
+        "edge": "media",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "media_type",
+                "value": "CAROUSEL"
+              },
+              {
+                "name": "children",
+                "value": "={{ $json.mediaIds }}"
+              },
+              {
+                "name": "caption",
+                "value": "={{ $json.carousel_caption }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        740,
+        -180
+      ],
+      "id": "2369d8fa-0dd2-49dc-929a-daa0a6669e82",
+      "name": "Create Carousel Container",
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "RYE1L2bnBbLmnp2a",
+          "name": "Instagram Carousel Credential"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -840
+      ],
+      "id": "95c54885-fdcc-42a4-aafd-efebb5754c82",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f2734c57-cd10-44dc-9359-6fe7f044d56c",
+              "name": "carousel_caption",
+              "value": "={{ $json.caption }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        780,
+        -840
+      ],
+      "id": "99046df9-9258-47a3-b337-4dec52b46745",
+      "name": "Set Caption Value"
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "17841452763161920",
+        "edge": "media_publish",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "creation_id",
+                "value": "={{ $json.id }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        -840,
+        200
+      ],
+      "id": "344cc183-b354-4eba-b498-42750123efbd",
+      "name": "Publish Carousel",
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "RYE1L2bnBbLmnp2a",
+          "name": "Instagram Carousel Credential"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Store both caption and row number in workflow static data\nworkflowStaticData = _getWorkflowStaticData(\"global\")\n\n# Get the caption and row number from the current item\nif \"caption\" in items[0][\"json\"]:\n    caption = items[0][\"json\"][\"caption\"]\nelse:\n    caption = \"\"\n    \nif \"row_number\" in items[0][\"json\"]:\n    row_number = items[0][\"json\"][\"row_number\"]\nelse:\n    row_number = \"\"\n\n# Store in static data\nworkflowStaticData[\"carousel_caption\"] = caption\nworkflowStaticData[\"current_row_number\"] = row_number\n\n# Return the original data\nreturn items"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        -600
+      ],
+      "id": "b3b6fd0a-3a62-4ce9-ac38-58383f83f288",
+      "name": "Set Caption in Static Data"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Transform the format for carousel container creation\nworkflowStaticData = _getWorkflowStaticData(\"global\")\nreturnItems = []\n\ntry:\n    # Get the first item which contains the mediaIds array\n    if items and len(items) > 0:\n        first_item = items[0]\n        \n        # Extract mediaIds directly from the input structure\n        if 'json' in first_item and 'mediaIds' in first_item['json'] and isinstance(first_item['json']['mediaIds'], list):\n            media_ids = first_item['json']['mediaIds']\n        else:\n            # If the expected structure isn't found, try to get it from the raw item\n            media_ids = first_item.get('json', {}).get('mediaIds', [])\n            \n            # If still empty, try to extract from the visible structure in your screenshot\n            if not media_ids and 'mediaIds' in first_item:\n                media_ids = first_item['mediaIds']\n    else:\n        media_ids = []\n        \n    # If media_ids is still empty, try to directly extract IDs from items[0]['json']\n    if not media_ids and items and 'json' in items[0]:\n        json_data = items[0]['json']\n        # Check if this is an array of ID strings\n        if isinstance(json_data, list) and all(isinstance(id, str) for id in json_data):\n            media_ids = json_data\n    \n    # Get the caption from workflow static data\n    caption = workflowStaticData.get(\"carousel_caption\", \"\")\n    \n    # Create output with both the media IDs and the caption\n    output = {\n        \"mediaIds\": media_ids,\n        \"carousel_caption\": caption\n    }\n    \n    print(f\"Final output: {output}\")\n    returnItems.append({\"json\": output})\nexcept Exception as e:\n    print(f\"Error in transform function: {str(e)}\")\n    returnItems.append({\"json\": {\"error\": str(e)}})\n\nreturn returnItems"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        -180
+      ],
+      "id": "54219236-1945-4172-93d2-270c404e9159",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Combine carousel_id from API response with row_number from static data\nworkflowStaticData = _getWorkflowStaticData(\"global\")\nreturnItems = []\n\nfor item in items:\n    try:\n        # Get carousel_id from the API response\n        carousel_id = item['json'].get('carousel_id', '')\n        \n        # Get row_number from workflow static data\n        row_number = workflowStaticData.get(\"current_row_number\", \"\")\n        \n        # Create update data for Google Sheets\n        update_data = {\n            \"carousel_id\": carousel_id,\n            \"row_number\": row_number,\n            \"status\": \"generated\"\n        }\n\n        # Store carousel_id in workflow static data\n        workflowStaticData[\"carousel_id\"] = carousel_id\n        \n        # Keep all the original data too\n        for key, value in item['json'].items():\n            if key not in update_data:\n                update_data[key] = value\n                \n        returnItems.append({\"json\": update_data})\n        \n    except Exception as e:\n        print(f\"Error creating update data: {str(e)}\")\n        returnItems.append(item)\n        \nreturn returnItems"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        -600
+      ],
+      "id": "5ff6bba3-a186-4b32-849e-46a7562dfa7d",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1snAnNsdJ9NX5_j7nbvJnOrTlErDROi7amtVTwdk4T7s",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1snAnNsdJ9NX5_j7nbvJnOrTlErDROi7amtVTwdk4T7s/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "carousel_id": "={{ $json.carousel_id }}",
+            "status": "={{ $json.status }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "carousel_id",
+              "displayName": "carousel_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "carousel_title",
+              "displayName": "carousel_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide1_text",
+              "displayName": "slide1_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide2_text",
+              "displayName": "slide2_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide3_text",
+              "displayName": "slide3_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide4_text",
+              "displayName": "slide4_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide5_text",
+              "displayName": "slide5_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide6_text",
+              "displayName": "slide6_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide7_text",
+              "displayName": "slide7_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slide8_text",
+              "displayName": "slide8_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hashtags",
+              "displayName": "hashtags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "include_logo",
+              "displayName": "include_logo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "logo_path",
+              "displayName": "logo_path",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "publish_date",
+              "displayName": "publish_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1160,
+        -840
+      ],
+      "id": "5e39e482-3ff9-4fb5-8eef-ffbeee36f8fa",
+      "name": "Get Row Number",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "9fYHb1z1fe2JqXA2",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1snAnNsdJ9NX5_j7nbvJnOrTlErDROi7amtVTwdk4T7s",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 399035019,
+          "mode": "list",
+          "cachedResultName": "PublishLog",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1snAnNsdJ9NX5_j7nbvJnOrTlErDROi7amtVTwdk4T7s/edit#gid=399035019"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "={{ $json.status === \"published\" ? \"Successfully Published to Instagram\" : $json.error || \"Error during publishing\" }}",
+            "Notes/Error": "Successfully Published to Instagram",
+            "Carousel ID": "={{ $json.carousel_id }}",
+            "Timestamp": "={{ DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Carousel ID",
+              "displayName": "Carousel ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes/Error",
+              "displayName": "Notes/Error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        320,
+        160
+      ],
+      "id": "5a560889-21ab-4d97-8042-3a57f4ed3179",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "9fYHb1z1fe2JqXA2",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Prepare data for updating Google Sheet with Published status\nworkflowStaticData = _getWorkflowStaticData(\"global\")\nreturnItems = []\n\nfor item in items:\n    try:\n        # Get the carousel_id either from the current item or from previous data\n        carousel_id = item['json'].get('id') or workflowStaticData.get(\"carousel_id\", \"\")\n        \n        # Get row_number from workflow static data\n        row_number = workflowStaticData.get(\"current_row_number\", \"\")\n        \n        # Create update data\n        update_data = {\n            \"carousel_id\": carousel_id,\n            \"row_number\": row_number,\n            \"status\": \"published\"  # Set status to published\n        }\n        \n        returnItems.append({\"json\": update_data})\n        \n    except Exception as e:\n        print(f\"Error preparing data for sheet update: {str(e)}\")\n        returnItems.append(item)\n        \nreturn returnItems"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -220,
+        60
+      ],
+      "id": "f8b4b668-18ce-4dcc-9ff0-03938fb8976f",
+      "name": "Set Success Data"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Prepare data for updating Google Sheet with error status\nworkflowStaticData = _getWorkflowStaticData(\"global\")\nreturnItems = []\n\nfor item in items:\n    try:\n        # Get carousel_id from workflow static data\n        carousel_id = workflowStaticData.get(\"carousel_id\", \"\")\n        \n        # Get row_number from workflow static data\n        row_number = workflowStaticData.get(\"current_row_number\", \"\")\n        \n        # Create update data\n        update_data = {\n            \"carousel_id\": carousel_id,\n            \"row_number\": row_number,\n            \"status\": \"error\"  # Set status to error\n        }\n        \n        returnItems.append({\"json\": update_data})\n        \n    except Exception as e:\n        print(f\"Error preparing data for sheet update: {str(e)}\")\n        returnItems.append(item)\n        \nreturn returnItems"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -220,
+        300
+      ],
+      "id": "ed4c070a-9b16-4799-ad2c-7a334c96d0ff",
+      "name": "Set Error Data"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Get Scheduled Carousels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Get Scheduled Carousels": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Carousels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Through Carousels": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Format Carousel Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Carousel Images": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Google Sheet - Success": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Google Sheet - Error": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Carousel Data": {
+      "main": [
+        [
+          {
+            "node": "Sanitize Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize Code": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Set Caption in Static Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Images": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Instagram Upload": {
+      "main": [
+        [
+          {
+            "node": "Process Images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Format Single Image Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Single Image Request": {
+      "main": [
+        [
+          {
+            "node": "Upload Single Carousel Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Single Carousel Item": {
+      "main": [
+        [
+          {
+            "node": "Transform Media IDs to Array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Media IDs to Array": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        [
+          {
+            "node": "Set Caption Value",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Carousel Container": {
+      "main": [
+        [
+          {
+            "node": "Publish Carousel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Caption in Static Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Carousel Images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Create Carousel Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Get Row Number",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Instagram Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish Carousel": {
+      "main": [
+        [
+          {
+            "node": "Set Success Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Error Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Row Number": {
+      "main": [
+        []
+      ]
+    },
+    "Set Success Data": {
+      "main": [
+        [
+          {
+            "node": "Update Google Sheet - Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Error Data": {
+      "main": [
+        [
+          {
+            "node": "Update Google Sheet - Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": -1,
+    "executionOrder": "v0"
+  },
+  "versionId": "87cd0b5a-7db8-4530-806f-77996952764e",
+  "meta": {
+    "instanceId": "7e2255420babb6baec12136e390a76b78f12ca897c25716bf86d43ec896b2952"
+  },
+  "id": "JhSavFSdwjWpsJj6",
+  "tags": []
+}
