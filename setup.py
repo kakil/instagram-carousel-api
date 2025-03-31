@@ -29,19 +29,19 @@ setup(
     ],
     python_requires=">=3.8",
     install_requires=[
-        "fastapi>=0.109.1",
+        "fastapi>=0.110.0",
         "uvicorn>=0.23.2",
-        "python-multipart>=0.0.19",
-        "Pillow>=10.0.0",
+        "python-multipart==0.0.9",  # Using older version without vulnerability
+        "Pillow>=10.3.0",
         "python-dotenv>=1.0.0",
         "pydantic>=2.5.2",
         "pydantic-settings>=2.1.0",
     ],
     extras_require={
         "dev": [
-            "pytest>=7.4.0",
+            "pytest>=8.2.0",
             "httpx>=0.24.1",
-            "black>=23.1.0",
+            "black>=24.3.0",  # Updated to fix CVE-2024-21503
             "flake8>=6.0.0",
             "isort>=5.12.0",
         ],

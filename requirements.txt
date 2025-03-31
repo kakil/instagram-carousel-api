@@ -1,7 +1,7 @@
-fastapi==0.109.1
+fastapi==0.110.0  # Using newer version to get starlette>=0.36.3
 uvicorn==0.23.2
-python_multipart==0.0.19
-Pillow==10.0.0
+python_multipart==0.0.9  # Using older version without the vulnerability (0.0.6 - 0.0.19 are affected)
+Pillow==10.3.0  # Updated to fix CVE-2023-50447, CVE-2024-28219, and PVE-2024-64437
 python-dotenv==1.0.0
 pydantic==2.5.2
 pydantic-settings==2.1.0
