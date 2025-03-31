@@ -1,108 +1,4 @@
-## 6. Workflow Maintenance
-
-### 6.1 Regular Updates
-
-1. Keep your Instagram Carousel API updated:
-   ```bash
-   cd instagram-carousel-api
-   git pull
-   ./scripts/docker.sh prod:build
-   ```
-
-2. Export and back up your n8n workflow regularly:
-   - Go to your n8n instance
-   - Open the workflow
-   - Click the "Export" button
-   - Save the JSON file to a secure location
-
-3. Update Meta Graph API tokens:
-   - Facebook access tokens eventually expire
-   - Generate new long-lived tokens before expiration
-   - Update the token in n8n credentials
-
-### 6.2 Security Considerations
-
-- Store API credentials securely in n8n
-- Use HTTPS for all connections
-- Keep your server and n8n instance updated
-- Implement IP restrictions for API access if possible
-- Monitor the PublishLog sheet for unauthorized usage
-
-### 6.3 Advanced Configuration
-
-The workflow has several places where you can customize functionality:
-
-#### Modify Text Sanitization
-You can adjust the text sanitization rules in the "Sanitize Code" node to handle specific characters your content might contain.
-
-#### Customize Image Processing
-The API supports various settings for image generation that you can add to the HTTP request:
-- Image dimensions
-- Background colors
-- Font settings
-
-#### Adjust Status Flow
-The workflow uses these status values:
-- "scheduled" - Ready to be processed
-- "generated" - Images created but not published
-- "published" - Successfully posted to Instagram
-- "error" - Processing failed
-
-You can modify these or add additional statuses based on your needs.## 5. Workflow Execution and Monitoring
-
-### 5.1 Manual Testing
-
-If you imported the example workflow:
-1. Verify all connections and credentials are properly configured
-2. Make sure your Google Sheet is structured as expected (see Section 7)
-3. Add a test row to your Google Sheet with status="scheduled"
-4. Run the workflow just for this test row by selecting it in the "Loop Through Carousels" node
-
-Testing individual components:
-1. You can test the image generation alone by running only up to the HTTP Request node
-2. Test the Instagram upload separately by manually providing image URLs to the Upload nodes
-
-### 5.2 Monitoring and Logging
-
-The workflow includes built-in logging through the PublishLog sheet, which records:
-- When carousels are published
-- Any errors that occur during processing
-- The carousel IDs for tracking
-
-Additionally, the Instagram Carousel API includes monitoring endpoints:
-1. Health check: `https://api.yourdomain.com/health`
-2. Metrics: `https://api.yourdomain.com/metrics`
-
-You can also check API logs using Docker:
-```bash
-./scripts/docker.sh logs
-```
-
-### 5.3 Troubleshooting
-
-#### API Connection Issues
-- Verify the API endpoint is accessible: `https://api.yourdomain.com/api/v1/generate-carousel-with-urls`
-- Check if the API is responding with proper JSON output
-- Review Python code node outputs for any parsing errors
-
-#### Image Generation Fails
-- Check the API logs for details on errors
-- Common issues include:
-  - Malformed text input with special characters
-  - Missing required parameters in the request
-  - Server resource limitations
-
-#### Instagram Publishing Fails
-- Ensure your Instagram account is a Business account
-- Verify the access tokens are valid and haven't expired
-- Check Meta Developer App settings for required permissions
-- Validate that the image URLs are publicly accessible
-- Make sure the images meet Instagram's requirements (dimensions, file size, etc.)
-
-#### Google Sheets Integration
-- Ensure the sheet has the exact column names expected by the workflow
-- Check that the `row_number` column exists and contains values
-- Verify your Google API credentials have write access to the sheet# n8n Workflow Implementation Guide
+# n8n Workflow Implementation Guide
 
 ## 1. Prerequisites
 
@@ -240,7 +136,7 @@ You can either build the workflow from scratch or import the provided example wo
 
 #### Option 1: Import the Example Workflow (Recommended)
 
-1. Download the example workflow JSON file from: [examples/Instagram_Carousel___1_0.json]((https://github.com/kakil/instagram-carousel-api/blob/main/docs/examples/Instagram_Carousel___1_0.json))
+1. Download the example workflow JSON file from: `docs/examples/Instagram_Carousel___1_0.json`
 2. Open your n8n instance
 3. Click "Workflows" in the sidebar
 4. Click the "Import" button in the top right
@@ -325,7 +221,6 @@ for item in items:
 
 # Return the processed items
 return returnItems
-```
 ```
 
 ### 4.6 Add Sanitize Code Node
@@ -676,55 +571,6 @@ for item in items:
 return returnItems
 ```
 
-**: Check the API logs for details on errors
-- **Instagram Post Fails**:
-  - Ensure your Instagram account is a Business account
-  - Verify the access tokens are valid and haven't expired
-  - Check Meta Developer App settings for required permissions
-
-### 5.4 Advanced Workflow Enhancements
-
-- Add Slack notifications
-- Implement webhook triggers for immediate posting
-- Add a preview step where you can approve posts before they go live
-
-## 6. Workflow Maintenance
-
-### 6.1 Regular Updates
-
-1. Keep your Instagram Carousel API updated:
-   ```bash
-   cd instagram-carousel-api
-   git pull
-   ./scripts/docker.sh prod:build
-   ```
-
-2. Export and back up your n8n workflow regularly
-
-### 6.2 Security Considerations
-
-- Rotate API keys periodically
-- Use HTTPS for all connections
-- Store credentials securely in n8n
-- Keep your server and n8n instance updated
-
-## 7. Example Google Sheet Structure
-
-### 7.1 Standard Structure
-
-Create a Google Sheet with the following columns:
-
-- `carousel_title`: Title of the carousel
-- `slide_text`: Text for each slide, separated by `||`
-- `include_logo`: TRUE/FALSE
-- `logo_path`: Path to logo (if applicable)
-- `caption`: Instagram post caption
-- `hashtags`: Hashtags to add to the post
-- `publish_date`: When to publish (YYYY-MM-DD)
-- `published`: TRUE/FALSE (will be updated by workflow)
-- `publish_timestamp`: (will be filled by workflow)
-- `post_url`: (will be filled by workflow)
-
 ### 4.15 Upload Single Carousel Item
 
 1. Add a "Facebook Graph API" node
@@ -899,6 +745,131 @@ return returnItems
    - Matching Column: row_number
    - Columns: status, carousel_id
 
+## 5. Workflow Execution and Monitoring
+
+### 5.1 Manual Testing
+
+If you imported the example workflow:
+1. Verify all connections and credentials are properly configured
+2. Make sure your Google Sheet is structured as expected (see Section 7)
+3. Add a test row to your Google Sheet with status="scheduled"
+4. Run the workflow just for this test row by selecting it in the "Loop Through Carousels" node
+
+Testing individual components:
+1. You can test the image generation alone by running only up to the HTTP Request node
+2. Test the Instagram upload separately by manually providing image URLs to the Upload nodes
+
+### 5.2 Monitoring and Logging
+
+The workflow includes built-in logging through the PublishLog sheet, which records:
+- When carousels are published
+- Any errors that occur during processing
+- The carousel IDs for tracking
+
+Additionally, the Instagram Carousel API includes monitoring endpoints:
+1. Health check: `https://api.yourdomain.com/health`
+2. Metrics: `https://api.yourdomain.com/metrics`
+
+You can also check API logs using Docker:
+```bash
+./scripts/docker.sh logs
+```
+
+### 5.3 Troubleshooting
+
+#### API Connection Issues
+- Verify the API endpoint is accessible: `https://api.yourdomain.com/api/v1/generate-carousel-with-urls`
+- Check if the API is responding with proper JSON output
+- Review Python code node outputs for any parsing errors
+
+#### Image Generation Fails
+- Check the API logs for details on errors
+- Common issues include:
+  - Malformed text input with special characters
+  - Missing required parameters in the request
+  - Server resource limitations
+
+#### Instagram Publishing Fails
+- Ensure your Instagram account is a Business account
+- Verify the access tokens are valid and haven't expired
+- Check Meta Developer App settings for required permissions
+- Validate that the image URLs are publicly accessible
+- Make sure the images meet Instagram's requirements (dimensions, file size, etc.)
+
+#### Google Sheets Integration
+- Ensure the sheet has the exact column names expected by the workflow
+- Check that the `row_number` column exists and contains values
+- Verify your Google API credentials have write access to the sheet
+
+## 6. Workflow Maintenance
+
+### 6.1 Regular Updates
+
+1. Keep your Instagram Carousel API updated:
+   ```bash
+   cd instagram-carousel-api
+   git pull
+   ./scripts/docker.sh prod:build
+   ```
+
+2. Export and back up your n8n workflow regularly:
+   - Go to your n8n instance
+   - Open the workflow
+   - Click the "Export" button
+   - Save the JSON file to a secure location
+
+3. Update Meta Graph API tokens:
+   - Facebook access tokens eventually expire
+   - Generate new long-lived tokens before expiration
+   - Update the token in n8n credentials
+
+### 6.2 Security Considerations
+
+- Store API credentials securely in n8n
+- Use HTTPS for all connections
+- Keep your server and n8n instance updated
+- Implement IP restrictions for API access if possible
+- Monitor the PublishLog sheet for unauthorized usage
+
+### 6.3 Advanced Configuration
+
+The workflow has several places where you can customize functionality:
+
+#### Modify Text Sanitization
+You can adjust the text sanitization rules in the "Sanitize Code" node to handle specific characters your content might contain.
+
+#### Customize Image Processing
+The API supports various settings for image generation that you can add to the HTTP request:
+- Image dimensions
+- Background colors
+- Font settings
+
+#### Adjust Status Flow
+The workflow uses these status values:
+- "scheduled" - Ready to be processed
+- "generated" - Images created but not published
+- "published" - Successfully posted to Instagram
+- "error" - Processing failed
+
+You can modify these or add additional statuses based on your needs.
+
+## 7. Example Google Sheet Structure
+
+### 7.1 Standard Structure
+
+Create a Google Sheet with the following columns:
+
+- `carousel_title`: Title of the carousel
+- `slide_text`: Text for each slide, separated by `||`
+- `include_logo`: TRUE/FALSE
+- `logo_path`: Path to logo (if applicable)
+- `caption`: Instagram post caption
+- `hashtags`: Hashtags to add to the post
+- `publish_date`: When to publish (YYYY-MM-DD)
+- `published`: TRUE/FALSE (will be updated by workflow)
+- `publish_timestamp`: (will be filled by workflow)
+- `post_url`: (will be filled by workflow)
+
 ### 7.2 Example Workflow Sheet Structure
 
 When using the example workflow JSON (`docs/examples/Instagram_Carousel___1_0.json`), your sheet needs these specific columns:
@@ -922,8 +893,6 @@ Create a second sheet named "PublishLog" with these columns:
 - `Carousel ID`: ID of the carousel that was published
 - `Status`: Status of the publishing action (success/error)
 - `Notes/Error`: Additional information or error messages
-
-This structure provides a complete content calendar system for your Instagram carousels that integrates perfectly with the n8n workflow and Instagram Carousel API.
 
 ## 8. Error Handling
 
@@ -953,9 +922,8 @@ When debugging the workflow:
 
 ### 9.1 Example Files
 
-- **Workflow Example**: [examples/Instagram_Carousel___1_0.json](https://github.com/kakil/instagram-carousel-api/blob/main/docs/examples/Instagram_Carousel___1_0.json) - Complete workflow ready
-  to import into n8n
-- **Implementation Guide**: This guide `docs/guides/n8n-workflow-implementation.md`
+- **Workflow Example**: `https://github.com/kakil/instagram-carousel-api/blob/main/docs/examples/Instagram_Carousel___1_0.json` - Complete workflow ready to import into n8n
+- **Implementation Guide**: This document (`docs/guides/n8n-workflow-implementation.md`)
 
 ### 9.2 Customization
 
