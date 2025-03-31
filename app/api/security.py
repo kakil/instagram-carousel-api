@@ -8,12 +8,11 @@ Enhanced security features including:
 - Comprehensive request validation
 """
 import logging
-import re
 import time
 from ipaddress import ip_address, ip_network
 from typing import Callable, Dict, List, Optional
 
-from fastapi import HTTPException, Request, Security
+from fastapi import HTTPException, Request
 from fastapi.security.api_key import APIKeyHeader, APIKeyQuery
 from starlette.status import HTTP_403_FORBIDDEN, HTTP_429_TOO_MANY_REQUESTS
 
@@ -22,9 +21,30 @@ from app.core.config import settings
 # Configure logging
 logger = logging.getLogger(__name__)
 
+
 # API Key Security
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 api_key_query = APIKeyQuery(name="api_key", auto_error=False)
+
+
+def get_client_ip(request: Request) -> str:
+    """
+    Safely extract client IP address.
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        str: Client IP address
+    """
+    # Check for common proxy headers
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        # Take the first IP if multiple are present
+        return forwarded_for.split(",")[0].strip()
+
+    # Fallback to direct client host
+    return request.client.host if request.client else "unknown"
 
 
 # Rate limiting storage with more sophisticated tracking
@@ -108,107 +128,30 @@ class RateLimiter:
                 del self.request_records[ip]
 
 
-# Global rate limiters with different strategies
-global_rate_limiter = RateLimiter(
-    max_requests=settings.RATE_LIMIT_MAX_REQUESTS, window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS
-)
-
-heavy_rate_limiter = RateLimiter(
-    max_requests=20, window_seconds=60  # More restrictive for heavy operations
-)
-
-
-def validate_api_key(api_key: Optional[str]) -> bool:
-    """
-    Validate API key with enhanced security checks.
-
-    Args:
-        api_key: API key to validate
-
-    Returns:
-        bool: Whether the API key is valid
-    """
-    # If no API key is configured, don't enforce authentication
-    if not settings.API_KEY:
-        return True
-
-    # Perform additional validation beyond simple string comparison
-    if not api_key:
-        logger.warning("No API key provided")
-        return False
-
-    # Constant-time comparison to prevent timing attacks
-    def secure_compare(a: str, b: str) -> bool:
-        if len(a) != len(b):
-            return False
-        return all(x == y for x, y in zip(a, b))
-
-    return secure_compare(api_key, settings.API_KEY)
-
-
-def get_client_ip(request: Request) -> str:
-    """
-    Safely extract client IP address.
-
-    Args:
-        request: FastAPI request object
-
-    Returns:
-        str: Client IP address
-    """
-    # Check for common proxy headers
-    forwarded_for = request.headers.get("X-Forwarded-For")
-    if forwarded_for:
-        # Take the first IP if multiple are present
-        return forwarded_for.split(",")[0].strip()
-
-    # Fallback to direct client host
-    return request.client.host if request.client else "unknown"
-
-
-def get_api_key(
-    api_key_header: Optional[str] = Security(api_key_header),
-    api_key_query: Optional[str] = Security(api_key_query),
-    request: Optional[Request] = None,
-) -> bool:
-    """
-    Validate API key with comprehensive checks.
-
-    Args:
-        api_key_header: API key from header
-        api_key_query: API key from query parameter
-        request: FastAPI request object
-
-    Returns:
-        bool: Whether the API key is valid
-
-    Raises:
-        HTTPException: If API key is invalid
-    """
-    # Try both header and query parameter
-    api_key = api_key_header or api_key_query
-
-    # Validate API key
-    if not validate_api_key(api_key):
-        logger.warning(f"Invalid API key attempt from {get_client_ip(request)}")
-        raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Invalid or missing API key")
-
-    return True
-
-
 def rate_limit(
-    limiter: RateLimiter = global_rate_limiter, client_ip_restrictions: Optional[List[str]] = None
+    max_requests: Optional[int] = None,
+    window_seconds: Optional[int] = None,
+    limiter: Optional[RateLimiter] = None,
+    client_ip_restrictions: Optional[List[str]] = None,
 ) -> Callable:
     """
     Create a comprehensive rate limiting dependency.
 
     Args:
-        limiter: Rate limiter to use
+        max_requests: Maximum requests allowed in the time window
+        window_seconds: Time window for rate limiting
+        limiter: Custom rate limiter (takes precedence over max_requests/window_seconds)
         client_ip_restrictions: List of allowed IP networks
 
     Returns:
         Dependency function for rate limiting
     """
+    # Use provided limiter or create a new one
+    if limiter is None:
+        # Use provided parameters or default from settings
+        max_req = max_requests or settings.RATE_LIMIT_MAX_REQUESTS
+        window_sec = window_seconds or settings.RATE_LIMIT_WINDOW_SECONDS
+        limiter = RateLimiter(max_requests=max_req, window_seconds=window_sec)
 
     async def rate_limit_dependency(request: Request) -> None:
         # Get client IP
@@ -239,30 +182,3 @@ def rate_limit(
             )
 
     return rate_limit_dependency
-
-
-def validate_file_access(carousel_id: str, filename: str) -> None:
-    """
-    Validate file access with comprehensive security checks.
-
-    Args:
-        carousel_id: Unique identifier for the carousel
-        filename: Name of the file to access
-
-    Raises:
-        HTTPException: If validation fails
-    """
-    # Strict validation of carousel_id
-    if not re.match(r"^[a-zA-Z0-9-_]{8}$", carousel_id):
-        logger.warning(f"Invalid carousel_id format: {carousel_id}")
-        raise HTTPException(status_code=404, detail="Invalid carousel ID")
-
-    # Validate filename format - alphanumeric with specific extensions
-    if not re.match(r"^[a-zA-Z0-9_-]+\.(png|jpg|jpeg|gif|webp|svg)$", filename):
-        logger.warning(f"Invalid filename format: {filename}")
-        raise HTTPException(status_code=404, detail="Invalid filename")
-
-    # Prevent directory traversal
-    if ".." in filename or filename.startswith("/"):
-        logger.warning(f"Potential directory traversal attempt: {filename}")
-        raise HTTPException(status_code=403, detail="Invalid file access attempt")
