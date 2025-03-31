@@ -3,8 +3,19 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "your-project-name"
+name = "instagram-carousel-api"
 version = "0.1.0"
+description = "API for generating Instagram carousel images with consistent styling"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    {name = "Kitwana Akil"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+]
 dependencies = [
     "fastapi==0.109.1",
     "uvicorn==0.23.2",
@@ -26,6 +37,10 @@ dev = [
     "isort"
 ]
 
+[project.scripts]
+carousel-api = "app.main:run_app"
+
+# Rest of your existing configuration follows...
 [tool.black]
 line-length = 100
 target-version = ['py39']
@@ -45,40 +60,4 @@ exclude = '''
 )/
 '''
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 100
-# Remove the extend-ignore line from here
-
-[tool.mypy]
-python_version = "3.8"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = "test_*.py"
-python_functions = "test_*"
-markers = [
-    "unit: marks tests as unit tests",
-    "integration: marks tests as integration tests",
-    "api: marks tests as API tests",
-    "slow: marks tests as slow running tests",
-    "dependency: marks tests related to dependency injection",
-    "asyncio: mark tests as asyncio tests",
-]
-addopts = [
-    "--strict-markers",
-    "--cov=app",
-    "--cov-report=term",
-    "--cov-report=html:coverage_html",
-    "--no-cov-on-fail",
-]
-asyncio_mode = "auto"
-
-# If you want to use pyproject.toml for flake8 config (requires flake8-pyproject package)
-[tool.flake8]
-extend-ignore = "E501"
+# ... (rest of your existing configuration)
